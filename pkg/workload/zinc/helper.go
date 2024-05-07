@@ -19,10 +19,14 @@ import (
 
 func FindAdminUser(ctx context.Context, client *kubernetes.Clientset) (user, pwd string, err error) {
 	var server *appsv1.StatefulSet
+
+RETRY:
 	server, err = client.AppsV1().StatefulSets(constants.SystemNamespace).Get(ctx, ZincServerName, metav1.GetOptions{})
 	if err != nil {
 		klog.Error("find zinc search server error, ", err)
-		return
+		// return
+		time.Sleep(5 * time.Second)
+		goto RETRY
 	}
 
 	var secret *corev1.Secret
