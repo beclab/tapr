@@ -24,7 +24,6 @@ RETRY:
 	server, err = client.AppsV1().StatefulSets(constants.SystemNamespace).Get(ctx, ZincServerName, metav1.GetOptions{})
 	if err != nil {
 		klog.Error("find zinc search server error, ", err)
-		// return
 		time.Sleep(5 * time.Second)
 		goto RETRY
 	}
@@ -229,17 +228,19 @@ func InitRole(admin, adminPwd string) error {
 	host := ZincServerService + "." + constants.SystemNamespace
 	endpoint := fmt.Sprintf("http://%s/api/role", host)
 
-	client := resty.New().SetTimeout(2 * time.Second)
+RETRY:
+	restyClient := resty.New().SetTimeout(2 * time.Second)
 	klog.Info("send post to ", endpoint, " to create or update role")
 
-	resp, err := client.R().SetBasicAuth(admin, adminPwd).
+	resp, err := restyClient.R().SetBasicAuth(admin, adminPwd).
 		SetHeader(restful.HEADER_ContentType, restful.MIME_JSON).
 		SetBody(RoleUser).
 		Post(endpoint)
 
 	if err != nil {
 		klog.Error("create or update role error, ", err, ",", RoleUser)
-		return err
+		time.Sleep(2 * time.Second)
+		goto RETRY
 	}
 
 	if resp.StatusCode() >= 400 {
