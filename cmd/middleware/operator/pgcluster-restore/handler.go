@@ -252,19 +252,23 @@ func (c *controller) watchJobDelete(job *batchv1.Job) {
 				return
 			case event, ok := <-watcher.ResultChan():
 				if !ok {
+					time.Sleep(5 * time.Second)
 					continue
 				}
 
 				switch event.Type {
 				case watch.Deleted:
+
 					watchedJob, ok := event.Object.(*batchv1.Job)
 					if !ok {
 						klog.Error("unexpected object")
+						time.Sleep(5 * time.Second)
 						continue
 					}
 
 					if watchedJob.Name != job.Name || watchedJob.Namespace != job.Namespace {
 						klog.Error("watch object error, ", watchedJob.Name, ", ", watchedJob.Namespace)
+						time.Sleep(5 * time.Second)
 						continue
 					}
 
@@ -287,6 +291,8 @@ func (c *controller) watchJobDelete(job *batchv1.Job) {
 					}
 
 					return
+				default:
+					continue
 				}
 			}
 		}
