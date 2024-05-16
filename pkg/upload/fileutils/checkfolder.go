@@ -55,6 +55,15 @@ func DeleteOldSubfolders(parentDir string) error {
 	// Iterate over each subfolder
 	for _, subfolder := range subfolders {
 		if !subfolder.IsDir() {
+			modTime := subfolder.ModTime()
+			if time.Since(modTime) < expireTime {
+				subfolderPath := filepath.Join(parentDir, subfolder.Name())
+				err := os.RemoveAll(subfolderPath)
+				if err != nil {
+					return fmt.Errorf("failed to delete subfile: %s", err.Error())
+				}
+				klog.Infof("Deleted subfile: %s\n", subfolderPath)
+			}
 			continue
 		}
 

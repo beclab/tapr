@@ -190,7 +190,7 @@ func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) 
 	return fileSize, nil
 }
 
-func UpdateFileInfo(fileInfo *models.FileInfo) error {
+func UpdateFileInfo(fileInfo models.FileInfo) error {
 	// Construct file information path
 	infoPath := filepath.Join(UploadsDir, fileInfo.ID+".info")
 
@@ -209,7 +209,21 @@ func UpdateFileInfo(fileInfo *models.FileInfo) error {
 	return nil
 }
 
-func MoveFileByInfo(fileInfo *models.FileInfo) error {
+func RemoveTempFileAndInfoFile(uid string) {
+	removeTempFile(uid)
+	removeInfoFile(uid)
+}
+
+func removeTempFile(uid string) {
+	filePath := filepath.Join(UploadsDir, uid)
+	err := os.Remove(filePath)
+	if err != nil {
+		klog.Warningf("remove %s err:%v", filePath, err)
+	}
+
+}
+
+func MoveFileByInfo(fileInfo models.FileInfo) error {
 	// Construct file path
 	filePath := filepath.Join(UploadsDir, fileInfo.ID)
 
