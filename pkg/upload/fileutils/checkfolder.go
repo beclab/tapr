@@ -16,18 +16,18 @@ const (
 
 func Init() {
 	cronDeleteOldfolders(UploadsDir)
-	checkTempDir(UploadsDir)
+	//checkTempDir(UploadsDir)
 }
 
-func checkTempDir(dirPath string) {
-	os.RemoveAll(dirPath)
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	if err != nil {
-		klog.Warning("MkdirAll err:", err)
-		return
-	}
-	klog.Infof("MkdirAll %s success", dirPath)
-}
+//func checkTempDir(dirPath string) {
+//	os.RemoveAll(dirPath)
+//	err := os.MkdirAll(dirPath, os.ModePerm)
+//	if err != nil {
+//		klog.Warning("MkdirAll err:", err)
+//		return
+//	}
+//	klog.Infof("MkdirAll %s success", dirPath)
+//}
 
 func cronDeleteOldfolders(dir string) {
 	c := cron.New()
