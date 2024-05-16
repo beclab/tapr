@@ -209,8 +209,8 @@ func (a *appController) UploadFile(c *fiber.Ctx) error {
 	//Generate unique Upload-ID
 	uploadID := uid.MakeUid(uploadInfo.FullPath)
 	exist, info := a.server.fileInfoMgr.ExistFileInfo(uploadID)
+	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile(uploadID)
 	if exist {
-		fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile(uploadID)
 		if fileExist {
 			if info.Offset != fileLen {
 				info.Offset = fileLen
@@ -232,6 +232,10 @@ func (a *appController) UploadFile(c *fiber.Ctx) error {
 		ID:           uploadID,
 		Offset:       0,
 		FileMetaData: uploadInfo,
+	}
+
+	if fileExist {
+		fileInfo.Offset = fileLen
 	}
 
 	err := a.server.fileInfoMgr.AddFileInfo(uploadID, fileInfo)
