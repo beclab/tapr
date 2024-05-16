@@ -7,20 +7,21 @@ import (
 	"github.com/robfig/cron/v3"
 	"k8s.io/klog/v2"
 	"path/filepath"
-	"time"
-
-	//"runtime/debug"
+	"runtime/debug"
 	"sync"
+	"time"
+)
+
+// todo use storage like boltdb/redis
+var (
+	InfoSyncMap sync.Map
 )
 
 type FileInfoMgr struct {
-	//todo use storage like boltdb/redis
-	InfoMap map[string]*models.FileInfo
-	mu      sync.RWMutex
 }
 
 func NewFileInfoMgr() *FileInfoMgr {
-	return &FileInfoMgr{InfoMap: make(map[string]*models.FileInfo)}
+	return &FileInfoMgr{}
 }
 
 func (m *FileInfoMgr) Init() {
@@ -41,57 +42,63 @@ func (m *FileInfoMgr) cronDeleteOldInfo() {
 }
 
 func (m *FileInfoMgr) DeleteOldInfos() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for k, v := range m.InfoMap {
+	InfoSyncMap.Range(func(key, value interface{}) bool {
+		v := value.(models.FileInfo)
+		klog.Infof("Key: %v, Value: %v\n", key, v)
 		if time.Since(v.LastUpdateTime) > expireTime {
-			delete(m.InfoMap, k)
+			klog.Infof("id %s expire del in map, stack:%s", key, debug.Stack())
+			InfoSyncMap.Delete(key)
+			RemoveTempFileAndInfoFile(key.(string))
 		}
-	}
+		return true
+	})
 }
 
-func (m *FileInfoMgr) AddFileInfo(id string, info *models.FileInfo) error {
-	exist, _ := m.ExistFileInfo(id)
-	if exist {
-		return fmt.Errorf("id %s already exist", id)
+func (m *FileInfoMgr) AddFileInfo(id string, info models.FileInfo) error {
+	if id != info.ID {
+		klog.Errorf("id:%s diff from v:%v", id, info)
+		return fmt.Errorf("id:%s diff from v:%v", id, info)
 	}
 
 	info.LastUpdateTime = time.Now()
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.InfoMap[id] = info
+	InfoSyncMap.Store(id, info)
 
 	return nil
 }
 
-func (m *FileInfoMgr) UpdateInfo(id string, info *models.FileInfo) {
+func debugMap() {
+	InfoSyncMap.Range(func(key, value interface{}) bool {
+		v := value.(models.FileInfo)
+		klog.Infof("Key: %v, Value: %v\n", key, v)
+		if key != v.ID {
+			klog.Errorf("k:%s different from v:%v stack:%s", key, v, debug.Stack())
+		}
+		return true
+	})
+}
+
+func (m *FileInfoMgr) UpdateInfo(id string, info models.FileInfo) {
+	if id != info.ID {
+		klog.Errorf("id:%s diff from v:%v", id, info)
+		return
+	}
+
 	info.LastUpdateTime = time.Now()
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.InfoMap[id] = info
+	InfoSyncMap.Store(id, info)
 }
 
 func (m *FileInfoMgr) DelFileInfo(id string) {
-	exist, _ := m.ExistFileInfo(id)
-	if !exist {
-		klog.Warningf("id %s not exist in map", id)
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.InfoMap, id)
+	InfoSyncMap.Delete(id)
+	RemoveTempFileAndInfoFile(id)
 }
 
-func (m *FileInfoMgr) ExistFileInfo(id string) (bool, *models.FileInfo) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if info, exist := m.InfoMap[id]; exist {
-		//debug.PrintStack()
-		klog.Infof("id %s exist in map, info:%+v", id, info)
-		return exist, info
+func (m *FileInfoMgr) ExistFileInfo(id string) (bool, models.FileInfo) {
+	value, ok := InfoSyncMap.Load(id)
+	if ok {
+		return ok, value.(models.FileInfo)
 	}
 
-	return false, nil
+	return false, models.FileInfo{}
 }
 
 func (m *FileInfoMgr) CheckTempFile(id string) (bool, int64) {

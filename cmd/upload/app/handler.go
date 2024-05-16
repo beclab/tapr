@@ -18,17 +18,17 @@ func (a *appController) PatchFile(c *fiber.Ctx) error {
 
 	if !utils.PathExists(fileutils.UploadsDir) {
 		if err := os.MkdirAll(fileutils.UploadsDir, os.ModePerm); err != nil {
-			klog.Warning("err:", err)
+			klog.Warningf("uploadID:%s, err:%v", uploadID, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
 				models.NewResponse(1, "failed to create folder", nil))
 		}
 	}
 
-	klog.Infof("c:%+v", c)
+	klog.Infof("uploadID:%s, c:%+v", uploadID, c)
 
 	var patchInfo models.FilePatchInfo
 	if err := c.BodyParser(&patchInfo); err != nil {
-		klog.Warning("err:", err)
+		klog.Warningf("uploadID:%s, err:%v", uploadID, err)
 		//todo check info valid
 		return c.Status(fiber.StatusBadRequest).JSON(
 			models.NewResponse(1, "param invalid", nil))
@@ -37,10 +37,12 @@ func (a *appController) PatchFile(c *fiber.Ctx) error {
 	var err error
 	patchInfo.File, err = c.FormFile("file")
 	if err != nil || patchInfo.File == nil {
-		klog.Warningf("Failed to parse file: %v\n", err)
+		klog.Warningf("uploadID:%s, Failed to parse file: %v\n", uploadID, err)
 		return c.Status(fiber.StatusBadRequest).JSON(
 			models.NewResponse(1, "param invalid", nil))
 	}
+
+	klog.Infof("uploadID:%s, patchInfo:%+v", uploadID, patchInfo)
 
 	// Get file information based on upload ID
 	exist, info := a.server.fileInfoMgr.ExistFileInfo(uploadID)
@@ -49,6 +51,20 @@ func (a *appController) PatchFile(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			models.NewResponse(1, "Invalid upload ID", nil))
 	}
+	klog.Infof("uploadID:%s, info:%+v", uploadID, info)
+	if uploadID != info.ID {
+		klog.Warningf("uploadID:%s diff from info:%+v", uploadID, info)
+	}
+
+	if patchInfo.UploadOffset == 0 {
+		//clear temp file and reset info
+		fileutils.RemoveTempFileAndInfoFile(uploadID)
+		if info.Offset != 0 {
+			info.Offset = 0
+			a.server.fileInfoMgr.UpdateInfo(uploadID, info)
+		}
+	}
+
 	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile(uploadID)
 	if fileExist {
 		klog.Infof("uploadID %s temp file exist, info.Offset:%d, fileLen:%d", uploadID, info.Offset, fileLen)
@@ -60,7 +76,7 @@ func (a *appController) PatchFile(c *fiber.Ctx) error {
 
 	// Check if file size and offset match
 	if patchInfo.UploadOffset != info.Offset {
-		klog.Warningf("uploadID %s, patchInfo.UploadOffset:%d diff from info.Offset:%d", uploadID, patchInfo.UploadOffset, info.Offset)
+		klog.Warningf("uploadID %s, patchInfo.UploadOffset:%d diff from info.Offset:%d, info:%v", uploadID, patchInfo.UploadOffset, info.Offset, info)
 		return c.Status(fiber.StatusBadRequest).JSON(
 			models.NewResponse(1, "Invalid offset", nil))
 	}
@@ -79,7 +95,7 @@ func (a *appController) PatchFile(c *fiber.Ctx) error {
 	// Write the file contents to the file at the specified path
 	fileSize, err := fileutils.SaveFile(fileHeader, fileutils.GetTempFilePathById(uploadID))
 	if err != nil {
-		klog.Warning("err:", err)
+		klog.Warningf("uploadID:%s, info:%+v, err:%v", uploadID, info, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			models.NewResponse(1, err.Error(), info))
 	}
@@ -90,7 +106,7 @@ func (a *appController) PatchFile(c *fiber.Ctx) error {
 	// Update file information for debug
 	err = fileutils.UpdateFileInfo(info)
 	if err != nil {
-		klog.Warning("err:", err)
+		klog.Warningf("uploadID:%s, info:%+v, err:%v", uploadID, info, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			models.NewResponse(1, err.Error(), info))
 	}
@@ -100,16 +116,19 @@ func (a *appController) PatchFile(c *fiber.Ctx) error {
 		// Move the file to the specified upload path
 		err = fileutils.MoveFileByInfo(info)
 		if err != nil {
-			klog.Warning("err:", err)
+			klog.Warningf("uploadID:%s, info:%+v, err:%v", uploadID, info, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
 				models.NewResponse(1, err.Error(), info))
 		}
 		a.server.fileInfoMgr.DelFileInfo(uploadID)
 
+		klog.Infof("uploadID:%s File uploaded successfully info:%+v", uploadID, info)
 		// Return successful response
 		return c.Status(fiber.StatusOK).JSON(
 			models.NewResponse(0, "File uploaded successfully", info))
 	}
+
+	klog.Infof("uploadID:%s File Continue uploading info:%+v", uploadID, info)
 
 	return c.Status(fiber.StatusOK).JSON(
 		models.NewResponse(0, "Continue uploading", info))
@@ -197,9 +216,11 @@ func (a *appController) UploadFile(c *fiber.Ctx) error {
 				info.Offset = fileLen
 				a.server.fileInfoMgr.UpdateInfo(uploadID, info)
 			}
+			klog.Infof("uploadID:%s, info.Offset:%d", uploadID, info.Offset)
 			return c.Status(fiber.StatusOK).JSON(
 				models.NewResponse(0, "success", info))
 		} else if info.Offset == 0 {
+			klog.Warningf("uploadID:%s, info.Offset:%d", uploadID, info.Offset)
 			return c.Status(fiber.StatusOK).JSON(
 				models.NewResponse(0, "success", info))
 		} else {
@@ -207,7 +228,7 @@ func (a *appController) UploadFile(c *fiber.Ctx) error {
 		}
 	}
 
-	fileInfo := &models.FileInfo{
+	fileInfo := models.FileInfo{
 		ID:           uploadID,
 		Offset:       0,
 		FileMetaData: uploadInfo,
@@ -215,7 +236,7 @@ func (a *appController) UploadFile(c *fiber.Ctx) error {
 
 	err := a.server.fileInfoMgr.AddFileInfo(uploadID, fileInfo)
 	if err != nil {
-		klog.Warning("err:", err)
+		klog.Warningf("uploadID:%s, err:%v", uploadID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			models.NewResponse(1, "Error save file info", nil))
 	}
@@ -229,7 +250,7 @@ func (a *appController) UploadFile(c *fiber.Ctx) error {
 	//	})
 	//}
 
-	klog.Infof("fileInfo:%+v", fileInfo)
+	klog.Infof("uploadID:%s, fileInfo:%+v", uploadID, fileInfo)
 	return c.Status(fiber.StatusOK).JSON(
 		models.NewResponse(0, "success", fileInfo))
 }
