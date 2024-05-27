@@ -158,7 +158,7 @@ func (a *adminController) CreateAppSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.User)
+	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.UserEncryptionKeysPG)
 	username := c.Context().UserValueBytes([]byte(constants.UsernameCtxKey)).(string)
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)
@@ -295,7 +295,7 @@ func (a *adminController) UpdateAppSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.User)
+	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.UserEncryptionKeysPG)
 	username := c.Context().UserValueBytes([]byte(constants.UsernameCtxKey)).(string)
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)

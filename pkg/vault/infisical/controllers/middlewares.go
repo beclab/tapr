@@ -10,7 +10,7 @@ import (
 
 func FetchUserPrivateKey(clientset *Clientset, next func(c *fiber.Ctx) error) func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
-		user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.User)
+		user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.UserEncryptionKeysPG)
 		password := c.Context().UserValueBytes(constants.UserPwdCtxKey).(string)
 		userPrivateKey, err := clientset.GetUserPrivateKey(user, password)
 		if err != nil {

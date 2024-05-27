@@ -8,7 +8,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func DecryptUserPrivateKeyHelper(user *User, password string) (string, error) {
+func DecryptUserPrivateKeyHelper(user *UserEncryptionKeysPG, password string) (string, error) {
 	switch user.EncryptionVersion {
 	case 1:
 

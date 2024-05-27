@@ -47,7 +47,7 @@ func (s *secretController) CreateSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.User)
+	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.UserEncryptionKeysPG)
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)
 
@@ -328,7 +328,7 @@ func (s *secretController) UpdateSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.User)
+	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.UserEncryptionKeysPG)
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)
 
@@ -368,7 +368,7 @@ func (s *secretController) UpdateSecret(c *fiber.Ctx) error {
 type secretClient struct {
 }
 
-func (s *secretClient) CreateSecretInWorkspace(user *infisical.User, token, workspaceId, projectKey, secretName, secretValue, env string) error {
+func (s *secretClient) CreateSecretInWorkspace(user *infisical.UserEncryptionKeysPG, token, workspaceId, projectKey, secretName, secretValue, env string) error {
 	url := infisical.InfisicalAddr + "/api/v3/secrets/" + secretName
 
 	secretKeyCiphertext, secretKeyIV, secretKeyTag, err := infisical_crypto.Encrypt(secretName, projectKey)
@@ -577,7 +577,7 @@ func (s *secretClient) DeleteSecretInWorkspace(token, workspaceId, projectKey, e
 	return nil
 }
 
-func (s *secretClient) UpdateSecretInWorkspace(user *infisical.User, token, workspaceId, projectKey, secretName, secretValue, env string) error {
+func (s *secretClient) UpdateSecretInWorkspace(user *infisical.UserEncryptionKeysPG, token, workspaceId, projectKey, secretName, secretValue, env string) error {
 	url := infisical.InfisicalAddr + "/api/v3/secrets/" + secretName
 
 	secretValueCiphertext, secretValueIV, secretValueTag, err := infisical_crypto.Encrypt(secretValue, projectKey)

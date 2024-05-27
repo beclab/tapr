@@ -20,16 +20,16 @@ type tokenClaims struct {
 }
 
 type tokenIssuer struct {
-	kubeconfig         *rest.Config
-	getMongoUserAndPwd func(ctx context.Context) (user string, pwd string, err error)
+	kubeconfig    *rest.Config
+	getUserAndPwd func(ctx context.Context) (user string, pwd string, err error)
 }
 
 func NewTokenIssuer(kubeconfig *rest.Config) *tokenIssuer {
 	return &tokenIssuer{kubeconfig: kubeconfig}
 }
 
-func (t *tokenIssuer) WithMongoUserAndPwd(f func(ctx context.Context) (user string, pwd string, err error)) *tokenIssuer {
-	t.getMongoUserAndPwd = f
+func (t *tokenIssuer) WithUserAndPwd(f func(ctx context.Context) (user string, pwd string, err error)) *tokenIssuer {
+	t.getUserAndPwd = f
 	return t
 }
 
@@ -56,7 +56,7 @@ func (t *tokenIssuer) IssueInfisicalToken(next func(c *fiber.Ctx) error) func(c 
 			})
 		}
 		c.Context().SetUserValueBytes(constants.UserCtxKey, user)
-		uid := user.ID.Hex()
+		uid := user.UserID
 
 		authKey, refreshKey, err := t.getJwtSecret(ctx)
 		if err != nil {
@@ -91,8 +91,12 @@ func (t *tokenIssuer) IssueInfisicalToken(next func(c *fiber.Ctx) error) func(c 
 	}
 }
 
-func (t *tokenIssuer) getUserFromInfisicalDB(ctx context.Context, email string) (*User, error) {
-	user, password, err := t.getMongoUserAndPwd(ctx)
+func (t *tokenIssuer) getUserFromInfisicalDB(ctx context.Context, email string) (*UserEncryptionKeysPG, error) {
+	return t.getUserFromInfisicalPostgres(ctx, email)
+}
+
+func (t *tokenIssuer) getUserFromInfisicalMongoDB(ctx context.Context, email string) (*UserMDB, error) {
+	user, password, err := t.getUserAndPwd(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +108,24 @@ func (t *tokenIssuer) getUserFromInfisicalDB(ctx context.Context, email string) 
 	}
 
 	return mongo.GetUser(ctx, email)
+}
+
+func (t *tokenIssuer) getUserFromInfisicalPostgres(ctx context.Context, email string) (*UserEncryptionKeysPG, error) {
+	user, password, err := t.getUserAndPwd(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", user, password, InfisicalDBAddr, InfisicalDBName)
+
+	pg, err := NewClient(dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	defer pg.Close()
+
+	return pg.GetUser(ctx, email)
 }
 
 func (t *tokenIssuer) getJwtSecret(ctx context.Context) (authKet string, refreshKey string, err error) {

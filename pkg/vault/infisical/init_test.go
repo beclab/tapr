@@ -16,7 +16,7 @@ func TestCreateUser(t *testing.T) {
 
 	os.Chdir("../../..")
 
-	err := InsertKsUser(context.TODO(), mongo, "liuyu", "l@l111.com", "Test123456")
+	err := InsertKsUserToMongo(context.TODO(), mongo, "liuyu", "l@l111.com", "Test123456")
 	if err != nil {
 		t.Log("insert error, ", err)
 		t.Fail()

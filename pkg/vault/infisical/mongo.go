@@ -21,7 +21,7 @@ type MongoClient struct {
 	Addr     string
 }
 
-type User struct {
+type UserMDB struct {
 	ID                  primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty" mapstructure:"_id"`
 	Email               string             `bson:"email" json:"email" mapstructure:"email"`
 	FirstName           string             `bson:"firstName" json:"firstName" mapstructure:"firstName"`
@@ -41,12 +41,12 @@ type User struct {
 	MfaMethods          []string           `bson:"mfaMethods" json:"mfaMethods" mapstructure:"mfaMethods"`
 }
 
-type Organization struct {
+type OrganizationMDB struct {
 	ID   primitive.ObjectID `bson:"_id,omitempty" mapstructure:"_id"`
 	Name string             `bson:"name"`
 }
 
-type MembershipOrg struct {
+type MembershipOrgMDB struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty" mapstructure:"_id"`
 	Organization primitive.ObjectID `bson:"organization"`
 	Role         string             `bson:"role"`
@@ -68,7 +68,7 @@ func (m *MongoClient) TryConnect() error {
 	return client.Ping(ctx, nil)
 }
 
-func (m *MongoClient) GetUser(basectx context.Context, email string) (*User, error) {
+func (m *MongoClient) GetUser(basectx context.Context, email string) (*UserMDB, error) {
 	if email == "" {
 		return nil, errors.New("email is empty")
 	}
@@ -93,7 +93,7 @@ func (m *MongoClient) GetUser(basectx context.Context, email string) (*User, err
 		return nil, err
 	}
 
-	var user User
+	var user UserMDB
 	err = mapstructure.Decode(result, &user)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (m *MongoClient) GetUser(basectx context.Context, email string) (*User, err
 	return &user, nil
 }
 
-func (m *MongoClient) SaveUser(basectx context.Context, user *User) (string, error) {
+func (m *MongoClient) SaveUser(basectx context.Context, user *UserMDB) (string, error) {
 	if user == nil {
 		return "", errors.New("user is empty")
 	}
@@ -125,7 +125,7 @@ func (m *MongoClient) SaveUser(basectx context.Context, user *User) (string, err
 		return "", err
 	}
 
-	dbOrg := &Organization{
+	dbOrg := &OrganizationMDB{
 		Name: "Terminus",
 	}
 	orgRes, err := db.Collection("organizations").InsertOne(ctx, dbOrg)
@@ -134,7 +134,7 @@ func (m *MongoClient) SaveUser(basectx context.Context, user *User) (string, err
 		return "", err
 	}
 
-	dbMember := &MembershipOrg{
+	dbMember := &MembershipOrgMDB{
 		Organization: orgRes.InsertedID.(primitive.ObjectID),
 		User:         userresult.InsertedID.(primitive.ObjectID),
 		Role:         "owner",

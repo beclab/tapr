@@ -7,7 +7,7 @@ import (
 
 	"bytetrade.io/web3os/tapr/pkg/utils"
 	"bytetrade.io/web3os/tapr/pkg/vault/infisical"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/google/uuid"
 )
 
 func TestGetWorkspace(t *testing.T) {
@@ -31,22 +31,11 @@ func TestCreateWorkspace(t *testing.T) {
 
 	w := &workspaceClient{}
 
-	id, err := primitive.ObjectIDFromHex("6481c167ee527c75e9622fab")
-	if err != nil {
-		t.Log(err)
-		t.Fail()
-		return
-	}
-
-	user := &infisical.User{
-		ID:                  id,
-		Email:               "test@localhost.local",
+	user := &infisical.UserEncryptionKeysPG{
+		UserID:              uuid.New().String(),
 		EncryptionVersion:   1,
-		RefreshVersion:      0,
 		EncryptedPrivateKey: "ITMdDXtLoxib4+53U/qzvIV/T/UalRwimogFCXv/UsulzEoiKM+aK2aqOb0=",
-		FirstName:           "Jake",
 		IV:                  "9fp0dZHI+UuHeKkWMDvD6w==",
-		LastName:            "Moni",
 		PublicKey:           "cf44BhkybbBfsE0fZHe2jvqtCj6KLXvSq4hVjV0svzk=",
 		Salt:                "d8099dc70958090346910fb9639262b83cf526fc9b4555a171b36a9e1bcd0240",
 		Tag:                 "bQ/UTghqcQHRoSMpLQD33g==",

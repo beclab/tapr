@@ -25,7 +25,7 @@ type workspaceController struct {
 type workspaceClient struct {
 }
 
-func (w *workspaceClient) CreateWorkspace(user *infisical.User, token, orgId, workspace, password string) (string, error) {
+func (w *workspaceClient) CreateWorkspace(user *infisical.UserEncryptionKeysPG, token, orgId, workspace, password string) (string, error) {
 	url := infisical.InfisicalAddr + "/api/v1/workspace"
 
 	client := NewHttpClient()
@@ -130,7 +130,7 @@ func (w *workspaceClient) IsNotFound(err error) bool {
 	return strings.HasPrefix(err.Error(), "not found")
 }
 
-func (w *workspaceClient) uploadKeyToWorkspace(user *infisical.User, token, workspaceId, privateKey string) error {
+func (w *workspaceClient) uploadKeyToWorkspace(user *infisical.UserEncryptionKeysPG, token, workspaceId, privateKey string) error {
 	key := make([]byte, WORKSPACE_KEY_SIZE_BYTES)
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
 		return err
@@ -150,7 +150,7 @@ func (w *workspaceClient) uploadKeyToWorkspace(user *infisical.User, token, work
 		SetHeader(restful.HEADER_ContentType, restful.MIME_JSON).
 		SetBody(fiber.Map{
 			"key": fiber.Map{
-				"userId":       user.ID.Hex(),
+				"userId":       user.UserID,
 				"encryptedKey": ciphertext,
 				"nonce":        nonce,
 			},

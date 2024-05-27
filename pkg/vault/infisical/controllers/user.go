@@ -39,6 +39,6 @@ func (u *userClient) GetUserOrganizationId(token string) (string, error) {
 	return orgs.Items[0].Id, nil
 }
 
-func (u *userClient) GetUserPrivateKey(user *infisical.User, password string) (string, error) {
+func (u *userClient) GetUserPrivateKey(user *infisical.UserEncryptionKeysPG, password string) (string, error) {
 	return infisical.DecryptUserPrivateKeyHelper(user, password)
 }
