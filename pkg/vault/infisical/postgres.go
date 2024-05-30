@@ -158,7 +158,7 @@ func (c *PostgresClient) GetUser(basectx context.Context, email string) (*UserEn
 	ctx, cancel := context.WithTimeout(basectx, 10*time.Second)
 	defer cancel()
 
-	sql := "select b.* from users a, user_encryption_keys b  where a.email=:email and a.id = b.userId"
+	sql := "select b.* from users a, user_encryption_keys b  where a.email=:email and a.id = b.\"userId\""
 	res, err := c.DB.NamedQueryContext(ctx, sql, map[string]interface{}{
 		"email": email,
 	})
@@ -235,7 +235,7 @@ func ValueMapper[T interface{}](obj T) (fields, namedKeys []string, err error) {
 	fields = make([]string, 0, len(values))
 	namedKeys = make([]string, 0, len(values))
 	for k := range values {
-		fields = append(fields, k)
+		fields = append(fields, "\""+k+"\"")
 		namedKeys = append(namedKeys, ":"+k)
 	}
 
@@ -252,7 +252,7 @@ func insert[T interface{}](basectx context.Context, client *PostgresClient, tabl
 		return
 	}
 
-	sql := fmt.Sprintf("insert into %s(%s) values(%s)", strings.Join(fields, ","), strings.Join(keys, ","))
+	sql := fmt.Sprintf("insert into %s(%s) values(%s)", table, strings.Join(fields, ","), strings.Join(keys, ","))
 	ctx, cancel := context.WithTimeout(basectx, 10*time.Second)
 	defer cancel()
 
