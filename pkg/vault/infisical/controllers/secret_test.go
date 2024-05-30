@@ -5,6 +5,7 @@ import (
 
 	"bytetrade.io/web3os/tapr/pkg/vault/infisical"
 	"github.com/google/uuid"
+	"k8s.io/utils/pointer"
 )
 
 func TestCreateSecret(t *testing.T) {
@@ -12,7 +13,7 @@ func TestCreateSecret(t *testing.T) {
 	infisical.InfisicalAddr = "https://infisical.liuy102.snowinning.com"
 
 	user := &infisical.UserEncryptionKeysPG{
-		ID:                  uuid.New().String(),
+		ID:                  pointer.String(uuid.New().String()),
 		EncryptionVersion:   1,
 		EncryptedPrivateKey: "ITMdDXtLoxib4+53U/qzvIV/T/UalRwimogFCXv/UsulzEoiKM+aK2aqOb0=",
 		IV:                  "9fp0dZHI+UuHeKkWMDvD6w==",

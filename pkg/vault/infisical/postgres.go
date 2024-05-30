@@ -38,15 +38,15 @@ type PostgresClient struct {
 	});
 */
 type UserPG struct {
-	ID           string   `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
+	ID           *string  `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
 	Email        string   `db:"email" json:"email" mapstructure:"email"`
-	AuthMethods  []string `db:"authMethods" json:"authMethods" mapstructure:"authMethods"`
+	AuthMethods  []string `db:"authMethods,omitempty" json:"authMethods,omitempty" mapstructure:"authMethods,omitempty"`
 	SuperAdmin   bool     `db:"superAdmin" json:"superAdmin" mapstructure:"superAdmin"`
 	FirstName    string   `db:"firstName" json:"firstName" mapstructure:"firstName"`
 	LastName     string   `db:"lastName" json:"lastName" mapstructure:"lastName"`
 	IsAccepted   bool     `db:"isAccepted" json:"isAccepted" mapstructure:"isAccepted"`
 	IsMfaEnabled bool     `db:"isMfaEnabled" json:"isMfaEnabled" mapstructure:"isMfaEnabled"`
-	MfaMethods   []string `db:"mfaMethods" json:"mfaMethods" mapstructure:"mfaMethods"`
+	MfaMethods   []string `db:"mfaMethods,omitempty" json:"mfaMethods,omitempty" mapstructure:"mfaMethods,omitempty"`
 	IsGhost      bool     `db:"IsGhost" json:"IsGhost" mapstructure:"IsGhost"`
 	Username     string   `db:"Username" json:"Username" mapstructure:"Username"`
 }
@@ -70,20 +70,20 @@ type UserPG struct {
 	});
 */
 type UserEncryptionKeysPG struct {
-	ID                  string `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
-	ClientPublicKey     string `db:"clientPublicKey" json:"clientPublicKey" mapstructure:"clientPublicKey"`
-	ServerPrivateKey    string `db:"serverPrivateKey" json:"serverPrivateKey" mapstructure:"serverPrivateKey"`
-	EncryptionVersion   int32  `db:"encryptionVersion" json:"encryptionVersion" mapstructure:"encryptionVersion"`
-	ProtectedKey        string `db:"protectedKey" json:"protectedKey" mapstructure:"protectedKey"`
-	ProtectedKeyIV      string `db:"protectedKeyIV" json:"protectedKeyIV" mapstructure:"protectedKeyIV"`
-	ProtectedKeyTag     string `db:"protectedKeyTag" json:"protectedKeyTag" mapstructure:"protectedKeyTag"`
-	PublicKey           string `db:"publicKey" json:"publicKey" mapstructure:"publicKey"`
-	EncryptedPrivateKey string `db:"encryptedPrivateKey" json:"encryptedPrivateKey" mapstructure:"encryptedPrivateKey"`
-	IV                  string `db:"iv" json:"iv" mapstructure:"iv"`
-	Tag                 string `db:"tag" json:"tag" mapstructure:"tag"`
-	Salt                string `db:"salt" json:"salt" mapstructure:"salt"`
-	Verifier            string `db:"verifier" json:"verifier" mapstructure:"verifier"`
-	UserID              string `db:"userId" json:"userId" mapstructure:"userId"`
+	ID                  *string `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
+	ClientPublicKey     string  `db:"clientPublicKey" json:"clientPublicKey" mapstructure:"clientPublicKey"`
+	ServerPrivateKey    string  `db:"serverPrivateKey" json:"serverPrivateKey" mapstructure:"serverPrivateKey"`
+	EncryptionVersion   int32   `db:"encryptionVersion" json:"encryptionVersion" mapstructure:"encryptionVersion"`
+	ProtectedKey        string  `db:"protectedKey" json:"protectedKey" mapstructure:"protectedKey"`
+	ProtectedKeyIV      string  `db:"protectedKeyIV" json:"protectedKeyIV" mapstructure:"protectedKeyIV"`
+	ProtectedKeyTag     string  `db:"protectedKeyTag" json:"protectedKeyTag" mapstructure:"protectedKeyTag"`
+	PublicKey           string  `db:"publicKey" json:"publicKey" mapstructure:"publicKey"`
+	EncryptedPrivateKey string  `db:"encryptedPrivateKey" json:"encryptedPrivateKey" mapstructure:"encryptedPrivateKey"`
+	IV                  string  `db:"iv" json:"iv" mapstructure:"iv"`
+	Tag                 string  `db:"tag" json:"tag" mapstructure:"tag"`
+	Salt                string  `db:"salt" json:"salt" mapstructure:"salt"`
+	Verifier            string  `db:"verifier" json:"verifier" mapstructure:"verifier"`
+	UserID              string  `db:"userId" json:"userId" mapstructure:"userId"`
 }
 
 /*
@@ -99,12 +99,12 @@ type UserEncryptionKeysPG struct {
 	});
 */
 type OrganizationsPG struct {
-	ID           string `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
-	Name         string `db:"name" json:"name" mapstructure:"name"`
-	CustomerId   string `db:"customerId" json:"customerId" mapstructure:"customerId"`
-	Slug         string `db:"slug" json:"slug" mapstructure:"slug"`
-	AuthEnforced bool   `db:"authEnforced" json:"authEnforced" mapstructure:"authEnforced"`
-	ScimEnabled  bool   `db:"scimEnabled" json:"scimEnabled" mapstructure:"scimEnabled"`
+	ID           *string `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
+	Name         string  `db:"name" json:"name" mapstructure:"name"`
+	CustomerId   string  `db:"customerId" json:"customerId" mapstructure:"customerId"`
+	Slug         string  `db:"slug" json:"slug" mapstructure:"slug"`
+	AuthEnforced bool    `db:"authEnforced" json:"authEnforced" mapstructure:"authEnforced"`
+	ScimEnabled  bool    `db:"scimEnabled" json:"scimEnabled" mapstructure:"scimEnabled"`
 }
 
 /*
@@ -121,13 +121,13 @@ type OrganizationsPG struct {
 	});
 */
 type OrgMembershipsPG struct {
-	ID          string `db:"id,omitempty" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Role        string `db:"role" json:"role" mapstructure:"role"`
-	Status      string `db:"status" json:"status" mapstructure:"status"`
-	InviteEmail string `db:"inviteEmail" json:"inviteEmail" mapstructure:"inviteEmail"`
-	UserId      string `db:"userId" json:"userId" mapstructure:"userId"`
-	OrgId       string `db:"orgId" json:"orgId" mapstructure:"orgId"`
-	RoleId      string `db:"roleId" json:"roleId" mapstructure:"roleId"`
+	ID          *string `db:"id,omitempty" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Role        string  `db:"role" json:"role" mapstructure:"role"`
+	Status      string  `db:"status" json:"status" mapstructure:"status"`
+	InviteEmail string  `db:"inviteEmail" json:"inviteEmail" mapstructure:"inviteEmail"`
+	UserId      string  `db:"userId" json:"userId" mapstructure:"userId"`
+	OrgId       string  `db:"orgId" json:"orgId" mapstructure:"orgId"`
+	RoleId      *string `db:"roleId,omitempty" json:"roleId,omitempty" mapstructure:"roleId,omitempty"`
 }
 
 func (c *PostgresClient) Close() {
@@ -267,28 +267,28 @@ func insert[T interface{}](basectx context.Context, client *PostgresClient, tabl
 }
 func (u *UserPG) Create(basectx context.Context, client *PostgresClient) (id string, err error) {
 	return insert(basectx, client, "users", u, func(obj *UserPG, id string) *UserPG {
-		obj.ID = id
+		obj.ID = &id
 		return obj
 	})
 }
 
 func (u *UserEncryptionKeysPG) Create(basectx context.Context, client *PostgresClient) (id string, err error) {
 	return insert(basectx, client, "user_encryption_keys", u, func(obj *UserEncryptionKeysPG, id string) *UserEncryptionKeysPG {
-		obj.ID = id
+		obj.ID = &id
 		return obj
 	})
 }
 
 func (o *OrganizationsPG) Create(basectx context.Context, client *PostgresClient) (id string, err error) {
 	return insert(basectx, client, "organizations", o, func(obj *OrganizationsPG, id string) *OrganizationsPG {
-		obj.ID = id
+		obj.ID = &id
 		return obj
 	})
 }
 
 func (o *OrgMembershipsPG) Create(basectx context.Context, client *PostgresClient) (id string, err error) {
 	return insert(basectx, client, "org_memberships", o, func(obj *OrgMembershipsPG, id string) *OrgMembershipsPG {
-		obj.ID = id
+		obj.ID = &id
 		return obj
 	})
 }
