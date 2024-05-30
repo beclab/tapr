@@ -47,8 +47,8 @@ type UserPG struct {
 	IsAccepted   bool     `db:"isAccepted" json:"isAccepted" mapstructure:"isAccepted"`
 	IsMfaEnabled bool     `db:"isMfaEnabled" json:"isMfaEnabled" mapstructure:"isMfaEnabled"`
 	MfaMethods   []string `db:"mfaMethods,omitempty" json:"mfaMethods,omitempty" mapstructure:"mfaMethods,omitempty"`
-	IsGhost      bool     `db:"IsGhost" json:"IsGhost" mapstructure:"IsGhost"`
-	Username     string   `db:"Username" json:"Username" mapstructure:"Username"`
+	IsGhost      bool     `db:"isGhost" json:"isGhost" mapstructure:"isGhost"`
+	Username     string   `db:"username" json:"username" mapstructure:"username"`
 }
 
 /*
