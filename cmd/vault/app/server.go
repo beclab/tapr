@@ -52,15 +52,17 @@ func (s *Server) Init() error {
 		return err
 	}
 
-	_, err = client.GetUser(ctx, user.Spec.Email)
+	u, err := client.GetUser(ctx, user.Spec.Email)
 	if err != nil {
 		return err
 	}
 
-	err = infisical.InsertKsUserToPostgres(ctx, client, infisical.Owner, user.Spec.Email, infisical.Password)
-	if err != nil {
-		klog.Error("init user error, ", err)
-		return err
+	if u == nil {
+		err = infisical.InsertKsUserToPostgres(ctx, client, infisical.Owner, user.Spec.Email, infisical.Password)
+		if err != nil {
+			klog.Error("init user error, ", err)
+			return err
+		}
 	}
 
 	return nil

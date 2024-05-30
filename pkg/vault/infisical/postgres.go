@@ -121,7 +121,7 @@ type OrganizationsPG struct {
 	});
 */
 type OrgMembershipsPG struct {
-	ID          *string `db:"id,omitempty" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	ID          *string `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
 	Role        string  `db:"role" json:"role" mapstructure:"role"`
 	Status      string  `db:"status" json:"status" mapstructure:"status"`
 	InviteEmail string  `db:"inviteEmail" json:"inviteEmail" mapstructure:"inviteEmail"`

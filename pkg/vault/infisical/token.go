@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 )
 
 type tokenClaims struct {
@@ -57,6 +58,7 @@ func (t *tokenIssuer) IssueInfisicalToken(next func(c *fiber.Ctx) error) func(c 
 		}
 		c.Context().SetUserValueBytes(constants.UserCtxKey, user)
 		uid := user.UserID
+		klog.Info("get user id, ", uid)
 
 		authKey, refreshKey, err := t.getJwtSecret(ctx)
 		if err != nil {
@@ -76,6 +78,7 @@ func (t *tokenIssuer) IssueInfisicalToken(next func(c *fiber.Ctx) error) func(c 
 			})
 		}
 		c.Context().SetUserValueBytes(constants.UserAuthTokenCtxKey, authToken)
+		klog.Info("get user token, ", authToken)
 
 		refreshToken, err := t.issueToken(uid, refreshKey, 10*24*time.Hour)
 		if err != nil {
@@ -128,7 +131,7 @@ func (t *tokenIssuer) getUserFromInfisicalPostgres(ctx context.Context, email st
 	return pg.GetUser(ctx, email)
 }
 
-func (t *tokenIssuer) getJwtSecret(ctx context.Context) (authKet string, refreshKey string, err error) {
+func (t *tokenIssuer) getJwtSecret(ctx context.Context) (authKey string, refreshKey string, err error) {
 	client, err := kubernetes.NewForConfig(t.kubeconfig)
 	if err != nil {
 		return "", "", err
@@ -139,10 +142,10 @@ func (t *tokenIssuer) getJwtSecret(ctx context.Context) (authKet string, refresh
 		return "", "", err
 	}
 
-	authKet = string(backendSecret.Data["JWT_AUTH_SECRET"])
+	authKey = string(backendSecret.Data["JWT_AUTH_SECRET"])
 	refreshKey = string(backendSecret.Data["JWT_REFRESH_SECRET"])
 
-	return authKet, refreshKey, nil
+	return authKey, refreshKey, nil
 }
 
 func (t *tokenIssuer) issueToken(userId string, key string, expireIn time.Duration) (string, error) {
