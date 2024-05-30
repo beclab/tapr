@@ -226,7 +226,7 @@ func (c *PostgresClient) SaveUser(basectx context.Context, user *UserPG, userEnc
 
 func ValueMapper[T interface{}](obj T) (fields, namedKeys []string, err error) {
 	values := make(map[string]interface{})
-	err = mapstructure.Decode(obj, values)
+	err = mapstructure.Decode(obj, &values)
 	if err != nil {
 		klog.Error("decode object value error, ", err)
 		return
