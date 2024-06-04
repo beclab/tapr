@@ -28,17 +28,20 @@ func FetchUserPrivateKey(clientset *Clientset, next func(c *fiber.Ctx) error) fu
 
 func FetchUserOrganizationId(clientset *Clientset, next func(c *fiber.Ctx) error) func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
-		token := c.Context().UserValueBytes(constants.UserAuthTokenCtxKey)
+		orgId := c.Context().UserValueBytes(constants.UserOrganizationIdCtxKey)
+		if orgId == nil {
+			token := c.Context().UserValueBytes(constants.UserAuthTokenCtxKey)
 
-		orgId, err := clientset.GetUserOrganizationId(token.(string))
-		if err != nil {
-			return c.JSON(fiber.Map{
-				"code":    http.StatusInternalServerError,
-				"message": "get user organization error, " + err.Error(),
-			})
+			orgId, err := clientset.GetUserOrganizationId(token.(string))
+			if err != nil {
+				return c.JSON(fiber.Map{
+					"code":    http.StatusInternalServerError,
+					"message": "get user organization error, " + err.Error(),
+				})
+			}
+
+			c.Context().SetUserValueBytes(constants.UserOrganizationIdCtxKey, orgId)
 		}
-
-		c.Context().SetUserValueBytes(constants.UserOrganizationIdCtxKey, orgId)
 		return next(c)
 	}
 }

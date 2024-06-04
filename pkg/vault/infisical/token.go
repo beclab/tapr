@@ -13,11 +13,18 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/pointer"
 )
 
 type tokenClaims struct {
 	jwt.StandardClaims
-	UserId string `json:"userId"`
+	UserId         string `json:"userId"`
+	AuthTokenType  string `json:"authTokenType"`
+	TokenVersionId string `json:"tokenVersionId"`
+	AccessVersion  *int   `json:"accessVersion,omitempty"`
+	RefreshVersion *int   `json:"refreshVersion,omitempty"`
+	OrganizationId string `json:"organizationId"`
+	AuthMethod     string `json:"authMethod"`
 }
 
 type tokenIssuer struct {
@@ -48,7 +55,7 @@ func (t *tokenIssuer) IssueInfisicalToken(next func(c *fiber.Ctx) error) func(c 
 		}
 
 		ctx := c.UserContext()
-		user, err := t.getUserFromInfisicalDB(ctx, email)
+		user, session, err := t.getUserFromInfisicalPostgres(ctx, email)
 		if err != nil {
 			return c.JSON(fiber.Map{
 				"code":    http.StatusUnauthorized,
@@ -57,10 +64,11 @@ func (t *tokenIssuer) IssueInfisicalToken(next func(c *fiber.Ctx) error) func(c 
 			})
 		}
 		c.Context().SetUserValueBytes(constants.UserCtxKey, user)
+		c.Context().SetUserValueBytes(constants.UserOrganizationIdCtxKey, *user.OrgId)
 		uid := user.UserID
 		klog.Info("get user id, ", uid)
 
-		authKey, refreshKey, err := t.getJwtSecret(ctx)
+		authKey, _, err := t.getJwtSecret(ctx)
 		if err != nil {
 			return c.JSON(fiber.Map{
 				"code":    http.StatusUnauthorized,
@@ -69,18 +77,7 @@ func (t *tokenIssuer) IssueInfisicalToken(next func(c *fiber.Ctx) error) func(c 
 			})
 		}
 
-		authToken, err := t.issueToken(uid, authKey, 10*24*time.Hour)
-		if err != nil {
-			return c.JSON(fiber.Map{
-				"code":    http.StatusUnauthorized,
-				"message": fmt.Sprintf("unable to sign auth token, %s", err.Error()),
-				"data":    nil,
-			})
-		}
-		c.Context().SetUserValueBytes(constants.UserAuthTokenCtxKey, authToken)
-		klog.Info("get user token, ", authToken)
-
-		refreshToken, err := t.issueToken(uid, refreshKey, 10*24*time.Hour)
+		refreshToken, err := t.issueToken(uid, authKey, 10*24*time.Hour, "refreshToken", *session.ID, *user.OrgId)
 		if err != nil {
 			return c.JSON(fiber.Map{
 				"code":    http.StatusUnauthorized,
@@ -90,12 +87,50 @@ func (t *tokenIssuer) IssueInfisicalToken(next func(c *fiber.Ctx) error) func(c 
 		}
 		c.Context().SetUserValueBytes(constants.UserRefreshTokenCtxKey, refreshToken)
 
+		// client := resty.New().SetTimeout(10 * time.Second)
+		// type Token struct {
+		// 	Token string `json:"token"`
+		// }
+
+		// res, err := client.R().
+		// 	SetCookie(&http.Cookie{Name: "jid", Value: refreshToken}).
+		// 	SetResult(&Token{}).
+		// 	Post(InfisicalAddr + "/api/v1/auth/token")
+
+		// if err != nil {
+		// 	klog.Error("refresh access token err, ", err)
+		// 	return c.JSON(fiber.Map{
+		// 		"code":    http.StatusUnauthorized,
+		// 		"message": fmt.Sprintf("unable to sign auth token, %s", err.Error()),
+		// 		"data":    nil,
+		// 	})
+		// }
+
+		// if res.StatusCode() != http.StatusOK {
+		// 	err = errors.New(string(res.Body()))
+		// 	klog.Error("refresh access token return code err, ", res.StatusCode(), ", ", err)
+
+		// 	return c.JSON(fiber.Map{
+		// 		"code":    http.StatusUnauthorized,
+		// 		"message": fmt.Sprintf("unable to sign auth token, %s", err.Error()),
+		// 		"data":    nil,
+		// 	})
+		// }
+
+		// authToken := res.Result().(*Token).Token
+		authToken, err := t.issueToken(uid, authKey, 10*24*time.Hour, "accessToken", *session.ID, *user.OrgId)
+		if err != nil {
+			return c.JSON(fiber.Map{
+				"code":    http.StatusUnauthorized,
+				"message": fmt.Sprintf("unable to sign auth token, %s", err.Error()),
+				"data":    nil,
+			})
+		}
+		c.Context().SetUserValueBytes(constants.UserAuthTokenCtxKey, authToken)
+		// klog.Info("get user token, ", authToken)
+
 		return next(c)
 	}
-}
-
-func (t *tokenIssuer) getUserFromInfisicalDB(ctx context.Context, email string) (*UserEncryptionKeysPG, error) {
-	return t.getUserFromInfisicalPostgres(ctx, email)
 }
 
 func (t *tokenIssuer) getUserFromInfisicalMongoDB(ctx context.Context, email string) (*UserMDB, error) {
@@ -113,22 +148,34 @@ func (t *tokenIssuer) getUserFromInfisicalMongoDB(ctx context.Context, email str
 	return mongo.GetUser(ctx, email)
 }
 
-func (t *tokenIssuer) getUserFromInfisicalPostgres(ctx context.Context, email string) (*UserEncryptionKeysPG, error) {
+func (t *tokenIssuer) getUserFromInfisicalPostgres(ctx context.Context, email string) (*UserEncryptionKeysPG, *AuthTokenSessionsPG, error) {
 	user, password, err := t.getUserAndPwd(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", user, password, InfisicalDBAddr, InfisicalDBName)
 
 	pg, err := NewClient(dsn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	defer pg.Close()
 
-	return pg.GetUser(ctx, email)
+	userEnc, err := pg.GetUser(ctx, email)
+	if err != nil {
+		klog.Error("get user encrypted key error, ", err)
+		return nil, nil, err
+	}
+
+	session, err := pg.GetUserTokenSession(ctx, userEnc.UserID, "localhost", "tapr-sidecar")
+	if err != nil {
+		klog.Error("get user token session error, ", err)
+		return nil, nil, err
+	}
+
+	return userEnc, session, nil
 }
 
 func (t *tokenIssuer) getJwtSecret(ctx context.Context) (authKey string, refreshKey string, err error) {
@@ -148,9 +195,26 @@ func (t *tokenIssuer) getJwtSecret(ctx context.Context) (authKey string, refresh
 	return authKey, refreshKey, nil
 }
 
-func (t *tokenIssuer) issueToken(userId string, key string, expireIn time.Duration) (string, error) {
+func (t *tokenIssuer) issueToken(userId string, key string, expireIn time.Duration, tokenType, sessionId, orgId string) (string, error) {
+	var (
+		av, rv *int
+	)
+
+	switch tokenType {
+	case "accessToken":
+		av = pointer.Int(1)
+	case "refreshToken":
+		rv = pointer.Int(1)
+	}
+
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims{
-		UserId: userId,
+		UserId:         userId,
+		AuthTokenType:  tokenType,
+		TokenVersionId: sessionId,
+		AccessVersion:  av,
+		RefreshVersion: rv,
+		OrganizationId: orgId,
+		AuthMethod:     "email",
 		StandardClaims: jwt.StandardClaims{
 			IssuedAt:  time.Now().Unix(),
 			ExpiresAt: time.Now().Add(expireIn).Unix(),

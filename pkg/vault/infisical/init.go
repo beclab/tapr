@@ -48,6 +48,12 @@ func GetenvOrDefault(env string, d string) string {
 }
 func InsertKsUserToPostgres(ctx context.Context, pg *PostgresClient, username, email, password string) error {
 	klog.Info("insert user: ", username, ", email: ", email, ", password: ", password)
+
+	err := pg.UpdateSuperAdmin(ctx)
+	if err != nil {
+		return err
+	}
+
 	publicKeyBytes, privateKeyBytes, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		return err

@@ -26,15 +26,15 @@ type workspaceClient struct {
 }
 
 func (w *workspaceClient) CreateWorkspace(user *infisical.UserEncryptionKeysPG, token, orgId, workspace, password string) (string, error) {
-	url := infisical.InfisicalAddr + "/api/v1/workspace"
+	url := infisical.InfisicalAddr + "/api/v2/workspace"
 
 	client := NewHttpClient()
 	resp, err := client.R().
 		SetHeader("Authorization", "Bearer "+token).
 		SetResult(map[string]*Workspace{}).
 		SetBody(fiber.Map{
-			"workspaceName":  workspace,
-			"organizationId": orgId,
+			"projectName": workspace,
+			//			"organizationId": orgId,
 		}).
 		Post(url)
 
@@ -49,13 +49,14 @@ func (w *workspaceClient) CreateWorkspace(user *infisical.UserEncryptionKeysPG, 
 	}
 
 	result := resp.Result().(*map[string]*Workspace)
-	workspaceId := (*result)["workspace"].Id
+	workspaceId := (*result)["project"].Id
 
+	// unnecessary in v2
 	// upload key to workspace to finish creating
-	err = w.uploadKeyToWorkspace(user, token, workspaceId, password)
-	if err != nil {
-		return "", err
-	}
+	// err = w.uploadKeyToWorkspace(user, token, workspaceId, password)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	return workspaceId, nil
 }

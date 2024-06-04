@@ -84,6 +84,7 @@ type UserEncryptionKeysPG struct {
 	Salt                string  `db:"salt" json:"salt" mapstructure:"salt"`
 	Verifier            string  `db:"verifier" json:"verifier" mapstructure:"verifier"`
 	UserID              string  `db:"userId" json:"userId" mapstructure:"userId"`
+	OrgId               *string `db:"orgId,omitempty" json:"orgId,omitempty" mapstructure:"orgId,omitempty"`
 }
 
 /*
@@ -130,6 +131,31 @@ type OrgMembershipsPG struct {
 	RoleId      *string `db:"roleId,omitempty" json:"roleId,omitempty" mapstructure:"roleId,omitempty"`
 }
 
+/*
+	export const AuthTokenSessionsSchema = z.object({
+		id: z.string().uuid(),
+		ip: z.string(),
+		userAgent: z.string().nullable().optional(),
+		refreshVersion: z.number().default(1),
+		accessVersion: z.number().default(1),
+		lastUsed: z.date(),
+		createdAt: z.date(),
+		updatedAt: z.date(),
+		userId: z.string().uuid()
+	  });
+*/
+type AuthTokenSessionsPG struct {
+	ID             *string    `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
+	IP             string     `db:"ip" json:"ip" mapstructure:"ip"`
+	UserAgent      *string    `db:"userAgent,omitempty" json:"userAgent,omitempty" mapstructure:"userAgent,omitempty"`
+	RefreshVersion int        `db:"refreshVersion" json:"refreshVersion" mapstructure:"refreshVersion"`
+	AccessVersion  int        `db:"accessVersion" json:"accessVersion" mapstructure:"accessVersion"`
+	UserId         string     `db:"userId" json:"userId" mapstructure:"userId"`
+	LastUsed       time.Time  `db:"lastUsed" json:"lastUsed" mapstructure:"lastUsed"`
+	CreatedAt      *time.Time `db:"createdAt,omitempty" json:"createdAt,omitempty" mapstructure:"createdAt,omitempty"`
+	UpdatedAt      *time.Time `db:"updatedAt,omitempty" json:"updatedAt,omitempty" mapstructure:"updatedAt,omitempty"`
+}
+
 func (c *PostgresClient) Close() {
 	err := c.DB.Close()
 	if err != nil {
@@ -150,6 +176,20 @@ func NewClient(dsn string) (*PostgresClient, error) {
 	return &PostgresClient{DB: &dbProxy}, nil
 }
 
+func (c *PostgresClient) UpdateSuperAdmin(basectx context.Context) error {
+	ctx, cancel := context.WithTimeout(basectx, 10*time.Second)
+	defer cancel()
+
+	sql := "update super_admin set initialized = true"
+	_, err := c.DB.ExecContext(ctx, sql)
+	if err != nil {
+		klog.Error("update super_admin error, ", err)
+		return err
+	}
+
+	return nil
+}
+
 func (c *PostgresClient) GetUser(basectx context.Context, email string) (*UserEncryptionKeysPG, error) {
 	if email == "" {
 		return nil, errors.New("email is empty")
@@ -158,7 +198,7 @@ func (c *PostgresClient) GetUser(basectx context.Context, email string) (*UserEn
 	ctx, cancel := context.WithTimeout(basectx, 10*time.Second)
 	defer cancel()
 
-	sql := "select b.* from users a, user_encryption_keys b  where a.email=:email and a.id = b.\"userId\""
+	sql := "select b.*, c.\"orgId\" from users a, user_encryption_keys b, org_memberships c where a.email=:email and a.id = b.\"userId\" and a.id = c.\"userId\""
 	res, err := c.DB.NamedQueryContext(ctx, sql, map[string]interface{}{
 		"email": email,
 	})
@@ -180,6 +220,54 @@ func (c *PostgresClient) GetUser(basectx context.Context, email string) (*UserEn
 	}
 
 	return nil, nil
+}
+
+func (c *PostgresClient) GetUserTokenSession(basectx context.Context, userId, ip, userAgent string) (*AuthTokenSessionsPG, error) {
+	if userId == "" {
+		return nil, errors.New("user is empty")
+	}
+
+	ctx, cancel := context.WithTimeout(basectx, 10*time.Second)
+	defer cancel()
+
+	sql := "select * from auth_token_sessions where \"userId\"=:userId and ip = :ip and \"userAgent\" = :userAgent"
+	res, err := c.DB.NamedQueryContext(ctx, sql, map[string]interface{}{
+		"userId":    userId,
+		"ip":        ip,
+		"userAgent": userAgent,
+	})
+
+	if err != nil {
+		klog.Error("fetch auth token session error, ", err)
+
+		return nil, err
+	}
+
+	var session AuthTokenSessionsPG
+	if res.Next() {
+		err = res.StructScan(&session)
+		if err != nil {
+			klog.Error("scan token session data error, ", err)
+			return nil, err
+		}
+		return &session, nil
+	}
+
+	session.UserId = userId
+	session.IP = ip
+	session.UserAgent = &userAgent
+	session.AccessVersion = 1
+	session.RefreshVersion = 1
+	session.LastUsed = time.Now()
+
+	sid, err := session.Create(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
+	session.ID = &sid
+
+	return &session, nil
 }
 
 func (c *PostgresClient) SaveUser(basectx context.Context, user *UserPG, userEnc *UserEncryptionKeysPG) (string, error) {
@@ -288,6 +376,13 @@ func (o *OrganizationsPG) Create(basectx context.Context, client *PostgresClient
 
 func (o *OrgMembershipsPG) Create(basectx context.Context, client *PostgresClient) (id string, err error) {
 	return insert(basectx, client, "org_memberships", o, func(obj *OrgMembershipsPG, id string) *OrgMembershipsPG {
+		obj.ID = &id
+		return obj
+	})
+}
+
+func (o *AuthTokenSessionsPG) Create(basectx context.Context, client *PostgresClient) (id string, err error) {
+	return insert(basectx, client, "auth_token_sessions", o, func(obj *AuthTokenSessionsPG, id string) *AuthTokenSessionsPG {
 		obj.ID = &id
 		return obj
 	})
