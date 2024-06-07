@@ -27,7 +27,7 @@ RUN apt-get update \
 #    && apt-get purge -y --auto-remove curl \
 #    && rm -rf /var/lib/apt/lists/* \
 
-RUN curl -O https://github.com/tensorchord/pgvecto.rs/releases/download/v0.2.1/vectors-pg15_0.2.1_amd64.deb && \
+RUN curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.2.1/vectors-pg15_0.2.1_amd64.deb && \
     apt-get install ./vectors-pg15_0.2.1_amd64.deb && rm vectors-pg15_0.2.1_amd64.deb
 
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null \
@@ -43,10 +43,10 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | te
 RUN echo "shared_preload_libraries='citus,vectors.so'" >> /usr/share/postgresql/postgresql.conf.sample
 
 # add scripts to run after initdb
-COPY 001-create-citus-extension.sql /docker-entrypoint-initdb.d/
+COPY docker/citus/001-create-citus-extension.sql /docker-entrypoint-initdb.d/
 
 # add health check script
-COPY pg_healthcheck wait-for-manager.sh /
+COPY docker/citus/pg_healthcheck docker/citus/wait-for-manager.sh /
 RUN chmod +x /wait-for-manager.sh
 
 # entry point unsets PGPASSWORD, but we need it to connect to workers
