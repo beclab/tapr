@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"context"
 	"testing"
 )
@@ -22,7 +23,7 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	defer mongo.Close(ctx)
-	err = mongo.CreateOrUpdateUserWithDatabase(ctx, "newUser", "pwd123", []string{"testdb1"})
+	err = mongo.CreateOrUpdateUserWithDatabase(ctx, "newUser", "pwd123", []v1alpha1.MongoDatabase{{Name: "testdb1"}})
 	if err != nil {
 		t.Log(err)
 		t.Fail()
@@ -49,7 +50,7 @@ func TestDropUser(t *testing.T) {
 	}
 
 	defer mongo.Close(ctx)
-	err = mongo.DropUserAndDatabase(ctx, "newUser", []string{"testdb1"})
+	err = mongo.DropUserAndDatabase(ctx, "newUser", []v1alpha1.MongoDatabase{{Name: "testdb1"}})
 	if err != nil {
 		t.Log(err)
 		t.Fail()
