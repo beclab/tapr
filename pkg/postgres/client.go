@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+
+	"bytetrade.io/web3os/tapr/pkg/utils"
 
 	"github.com/jmoiron/sqlx"
 	"k8s.io/klog/v2"
@@ -12,6 +15,13 @@ import (
 	// import driver
 	_ "github.com/lib/pq"
 )
+
+var extensionMap = map[string]string{
+	"pgvector":   "vector",
+	"vector":     "vector",
+	"vectors":    "vectors",
+	"pgvecto.rs": "vectors",
+}
 
 type DBLogger struct {
 	*sqlx.DB
@@ -172,6 +182,36 @@ func (c *client) findDatabase(ctx context.Context, databaseName string) (*PGTabl
 func (c *client) CreateCitus(ctx context.Context) error {
 	_, err := c.DB.ExecContext(ctx, "create extension if not exists citus")
 
+	return err
+}
+
+func (c *client) CreateExtensions(ctx context.Context, extensions []string) error {
+	errs := make([]error, 0)
+	for _, e := range extensions {
+		extension, ok := extensionMap[e]
+		if !ok {
+			extension = e
+		}
+		_, err := c.DB.ExecContext(ctx, fmt.Sprintf("create extension if not exists %s cascade;", extension))
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return utils.AggregateErrs(errs)
+}
+
+func (c *client) ExecuteScript(ctx context.Context, databaseName, dbUsername string, scripts []string) error {
+	var sb strings.Builder
+	for _, cmd := range scripts {
+		// replace databasename, dbusername with real database name and username in postgres
+		cmd = strings.ReplaceAll(cmd, "$databasename", databaseName)
+		cmd = strings.ReplaceAll(cmd, "$dbusername", dbUsername)
+		sb.WriteString(cmd)
+		if !strings.HasSuffix(cmd, ";") {
+			sb.WriteString(";")
+		}
+	}
+	_, err := c.DB.ExecContext(ctx, sb.String())
 	return err
 }
 

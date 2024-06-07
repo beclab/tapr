@@ -92,7 +92,7 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 
 		resp.Databases = make(map[string]string)
 		for _, db := range m.Spec.MongoDB.Databases {
-			resp.Databases[db] = percona.GetDatabaseName(m.Spec.AppNamespace, db)
+			resp.Databases[db.Name] = percona.GetDatabaseName(m.Spec.AppNamespace, db.Name)
 		}
 
 		return resp, nil
