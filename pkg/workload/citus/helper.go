@@ -16,13 +16,13 @@ import (
 	"bytetrade.io/web3os/tapr/pkg/postgres"
 	taprutils "bytetrade.io/web3os/tapr/pkg/utils"
 	"bytetrade.io/web3os/tapr/pkg/workload/utils"
+
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
@@ -195,6 +195,9 @@ func createPGCluster(ctx context.Context, client *kubernetes.Clientset,
 		sts, err = GetPGClusterDefineByUser(ctx, client, user, namespace, clusterDef)
 		if err != nil {
 			return nil, err
+		}
+		if len(clusterDef.Spec.CitusImage) > 0 {
+			sts.Spec.Template.Spec.Containers[0].Image = clusterDef.Spec.CitusImage
 		}
 
 		if clusterDef.Spec.AdminUser != "" {

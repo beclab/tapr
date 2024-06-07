@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
+
 	appv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,7 +42,7 @@ host all all all scram-sha-256
 var (
 	DefaultReplicas    int32 = 1
 	PGDataHostPathType       = corev1.HostPathDirectoryOrCreate
-	CitusImage               = "citusdata/citus:11.3.0-alpine"
+	CitusImage               = "beclab/citus:11.3"
 )
 
 var (

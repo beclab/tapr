@@ -47,7 +47,8 @@ type PGClusterSpec struct {
 	Replicas int32 `json:"replicas"`
 
 	// +kubebuilder:validation:Pattern=`^([a-zA-Z0-9_]*)$`
-	AdminUser string `json:"adminUser,omitempty"`
+	AdminUser  string `json:"adminUser,omitempty"`
+	CitusImage string `json:"citusImage,omitempty"`
 
 	Password      PasswordVar `json:"password,omitempty"`
 	Owner         string      `json:"owner"`
@@ -124,9 +125,9 @@ type Redis struct {
 }
 
 type MongoDB struct {
-	Password  PasswordVar `json:"password,omitempty"`
-	Databases []string    `json:"databases"`
-	User      string      `json:"user"`
+	Password  PasswordVar     `json:"password,omitempty"`
+	Databases []MongoDatabase `json:"databases"`
+	User      string          `json:"user"`
 }
 
 type PostgreSQL struct {
@@ -144,10 +145,16 @@ type Zinc struct {
 }
 
 type CitusDatabase struct {
-	Name string `json:"name"`
-
+	Name       string   `json:"name"`
+	Extensions []string `json:"extensions,omitempty"`
+	Scripts    []string `json:"scripts,omitempty"`
 	// +optional
 	Distributed *bool `json:"distributed"`
+}
+
+type MongoDatabase struct {
+	Name    string   `json:"name"`
+	Scripts []string `json:"scripts,omitempty"`
 }
 
 type ZincIndexConfig struct {
