@@ -6,6 +6,7 @@ import (
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/postgres"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -50,12 +51,11 @@ func (c *controller) createOrUpdatePGRequest(req *aprv1.MiddlewareRequest) error
 						return err
 					}
 
+					err = nodeClient.SwitchDatabase(dbRealName)
+					if err != nil {
+						return err
+					}
 					if db.IsDistributed() {
-						err = nodeClient.SwitchDatabase(dbRealName)
-						if err != nil {
-							return err
-						}
-
 						err = nodeClient.CreateCitus(c.ctx)
 						if err != nil {
 							klog.Error("create citus error, ", err)
@@ -69,13 +69,24 @@ func (c *controller) createOrUpdatePGRequest(req *aprv1.MiddlewareRequest) error
 								return err
 							}
 						}
+					}
+					if len(db.Extensions) > 0 {
+						err = nodeClient.CreateExtensions(c.ctx, db.Extensions)
+						if err != nil {
+							klog.Errorf("failed to create extension err=%v", err)
+							return err
+						}
+					}
+					if len(db.Scripts) > 0 {
+						err = nodeClient.ExecuteScript(c.ctx, dbRealName, req.Spec.PostgreSQL.User, db.Scripts)
+						if err != nil {
+							klog.Errorf("failed to execute script err=%v", err)
+							return err
+						}
 
 					}
-
 				}
-
 			}
-
 			return nil
 		}(); err != nil {
 			return err

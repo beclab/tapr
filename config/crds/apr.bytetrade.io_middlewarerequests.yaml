@@ -60,7 +60,16 @@ spec:
                 properties:
                   databases:
                     items:
-                      type: string
+                      properties:
+                        name:
+                          type: string
+                        scripts:
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - name
+                      type: object
                     type: array
                   password:
                     properties:
@@ -107,8 +116,16 @@ spec:
                       properties:
                         distributed:
                           type: boolean
+                        extensions:
+                          items:
+                            type: string
+                          type: array
                         name:
                           type: string
+                        scripts:
+                          items:
+                            type: string
+                          type: array
                       required:
                       - name
                       type: object

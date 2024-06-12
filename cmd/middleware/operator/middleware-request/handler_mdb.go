@@ -3,14 +3,15 @@ package middlewarerequest
 import (
 	"errors"
 
+	"bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
+	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
+	"bytetrade.io/web3os/tapr/pkg/mongo"
+	"bytetrade.io/web3os/tapr/pkg/workload/percona"
+
 	psmdbv1 "github.com/percona/percona-server-mongodb-operator/pkg/apis/psmdb/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-
-	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
-	"bytetrade.io/web3os/tapr/pkg/mongo"
-	"bytetrade.io/web3os/tapr/pkg/workload/percona"
 )
 
 func (c *controller) createOrUpdateMDBRequest(req *aprv1.MiddlewareRequest) error {
@@ -97,11 +98,13 @@ func (c *controller) getMongoClusterAdminUser(req *aprv1.MiddlewareRequest) (use
 	return
 }
 
-func dbRealNames(namespace string, dbs []string) []string {
-	var ret []string
-
+func dbRealNames(namespace string, dbs []v1alpha1.MongoDatabase) []v1alpha1.MongoDatabase {
+	ret := make([]v1alpha1.MongoDatabase, 0, len(dbs))
 	for _, db := range dbs {
-		ret = append(ret, percona.GetDatabaseName(namespace, db))
+		ret = append(ret, v1alpha1.MongoDatabase{
+			Name:    percona.GetDatabaseName(namespace, db.Name),
+			Scripts: db.Scripts,
+		})
 	}
 
 	return ret
