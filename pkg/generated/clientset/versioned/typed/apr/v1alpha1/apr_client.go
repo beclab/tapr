@@ -12,6 +12,8 @@ import (
 
 type AprV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	KVRocksBackupsGetter
+	KVRocksRestoresGetter
 	MiddlewareRequestsGetter
 	PGClustersGetter
 	PGClusterBackupsGetter
@@ -23,6 +25,14 @@ type AprV1alpha1Interface interface {
 // AprV1alpha1Client is used to interact with features provided by the apr.bytetrade.io group.
 type AprV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *AprV1alpha1Client) KVRocksBackups(namespace string) KVRocksBackupInterface {
+	return newKVRocksBackups(c, namespace)
+}
+
+func (c *AprV1alpha1Client) KVRocksRestores(namespace string) KVRocksRestoreInterface {
+	return newKVRocksRestores(c, namespace)
 }
 
 func (c *AprV1alpha1Client) MiddlewareRequests(namespace string) MiddlewareRequestInterface {

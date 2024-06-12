@@ -2,6 +2,22 @@
 
 package v1alpha1
 
+// KVRocksBackupListerExpansion allows custom methods to be added to
+// KVRocksBackupLister.
+type KVRocksBackupListerExpansion interface{}
+
+// KVRocksBackupNamespaceListerExpansion allows custom methods to be added to
+// KVRocksBackupNamespaceLister.
+type KVRocksBackupNamespaceListerExpansion interface{}
+
+// KVRocksRestoreListerExpansion allows custom methods to be added to
+// KVRocksRestoreLister.
+type KVRocksRestoreListerExpansion interface{}
+
+// KVRocksRestoreNamespaceListerExpansion allows custom methods to be added to
+// KVRocksRestoreNamespaceLister.
+type KVRocksRestoreNamespaceListerExpansion interface{}
+
 // MiddlewareRequestListerExpansion allows custom methods to be added to
 // MiddlewareRequestLister.
 type MiddlewareRequestListerExpansion interface{}

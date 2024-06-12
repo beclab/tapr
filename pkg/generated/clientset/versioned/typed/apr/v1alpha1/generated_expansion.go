@@ -2,6 +2,10 @@
 
 package v1alpha1
 
+type KVRocksBackupExpansion interface{}
+
+type KVRocksRestoreExpansion interface{}
+
 type MiddlewareRequestExpansion interface{}
 
 type PGClusterExpansion interface{}

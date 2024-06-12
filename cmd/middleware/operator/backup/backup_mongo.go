@@ -51,14 +51,14 @@ func (w *Watcher) restoreMongo() error {
 		return err
 	}
 
-	if err = percona.WaitForInitializeComplete(w.ctx, *&w.dynamicClient, *&w.k8sClientSet); err != nil {
+	if err = percona.WaitForInitializeComplete(w.ctx, w.dynamicClient, w.k8sClientSet); err != nil {
 		klog.Error("mongo cluster initialize error, ", err)
 		return err
 	}
 
 	// It is possible for the MongoDB restoration process to occur repeatedly,
 	// leading to the MongoDB cluster service becoming abnormally unavailable.
-	ok, err := percona.CheckMongoRestoreStatus(w.ctx, *&w.dynamicClient)
+	ok, err := percona.CheckMongoRestoreStatus(w.ctx, w.dynamicClient)
 	if !ok && err != nil {
 		klog.Error("mongo restore status check, ", err)
 	}

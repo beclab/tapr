@@ -4,28 +4,24 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: pgclusterrestores.apr.bytetrade.io
+  name: kvrocksbackups.apr.bytetrade.io
 spec:
   group: apr.bytetrade.io
   names:
     categories:
     - all
-    kind: PGClusterRestore
-    listKind: PGClusterRestoreList
-    plural: pgclusterrestores
+    kind: KVRocksBackup
+    listKind: KVRocksBackupList
+    plural: kvrocksbackups
     shortNames:
-    - pgc-restore
-    singular: pgclusterrestore
+    - kvr-backup
+    singular: kvrocksbackup
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - description: Cluster name
       jsonPath: .spec.clusterName
       name: Cluster
-      type: string
-    - description: Backup name
-      jsonPath: .spec.backupName
-      name: Backup
       type: string
     - description: Job status
       jsonPath: .status.state
@@ -42,8 +38,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: PGClusterRestore is the Schema for the PostgreSQL Cluster Restore
-          job
+        description: KVRocksBackup is the Schema for the KVRocks Backup job
         properties:
           apiVersion:
             description: |-
@@ -64,17 +59,16 @@ spec:
             type: object
           spec:
             properties:
-              backupName:
-                type: string
               clusterName:
                 type: string
             required:
-            - backupName
             - clusterName
             type: object
           status:
-            description: PGClusterRstoreStatus defines the observed state of PGClusterRestore
+            description: KVRocksBackupStatus defines the observed state of KVRocksBackup
             properties:
+              backupPath:
+                type: string
               completed:
                 format: date-time
                 type: string
@@ -84,7 +78,6 @@ spec:
                 format: date-time
                 type: string
               state:
-                description: RestoreState is for restore status states
                 type: string
             type: object
         type: object

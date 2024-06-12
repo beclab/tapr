@@ -10,10 +10,13 @@ import (
 
 	"bytetrade.io/web3os/tapr/cmd/middleware/app"
 	"bytetrade.io/web3os/tapr/cmd/middleware/operator/backup"
+	kvrocksbakcup "bytetrade.io/web3os/tapr/cmd/middleware/operator/kvrocks-bakcup"
+	kvrocksrestore "bytetrade.io/web3os/tapr/cmd/middleware/operator/kvrocks-restore"
 	middlewarerequest "bytetrade.io/web3os/tapr/cmd/middleware/operator/middleware-request"
 	"bytetrade.io/web3os/tapr/cmd/middleware/operator/pgcluster"
 	pgclusterbackup "bytetrade.io/web3os/tapr/cmd/middleware/operator/pgcluster-backup"
 	pgclusterrestore "bytetrade.io/web3os/tapr/cmd/middleware/operator/pgcluster-restore"
+	"bytetrade.io/web3os/tapr/cmd/middleware/operator/redixcluster"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
@@ -44,6 +47,10 @@ func main() {
 	pgBackupController := pgclusterbackup.NewController(config, apiCtx, pgclusterLister)
 	pgRestoreController := pgclusterrestore.NewController(config, apiCtx, pgclusterLister)
 
+	redixClusterController := redixcluster.NewController(config, apiCtx, func(cluster *aprv1.RedixCluster) {})
+	kvrocksBackupController := kvrocksbakcup.NewController(config, apiCtx)
+	kvrocksRestoreController := kvrocksrestore.NewController(config, apiCtx)
+
 	backupWatcher := backup.NewWatcher(config, apiCtx)
 
 	runControllers := func() {
@@ -51,6 +58,9 @@ func main() {
 		go func() { utilruntime.Must(requestController.Run(1)) }()
 		go func() { utilruntime.Must(pgBackupController.Run(1)) }()
 		go func() { utilruntime.Must(pgRestoreController.Run(1)) }()
+		go func() { utilruntime.Must(redixClusterController.Run(1)) }()
+		go func() { utilruntime.Must(kvrocksBackupController.Run(1)) }()
+		go func() { utilruntime.Must(kvrocksRestoreController.Run(1)) }()
 		go func() { backupWatcher.Start() }()
 	}
 

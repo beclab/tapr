@@ -37,6 +37,10 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=apr.bytetrade.io, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("kvrocksbackups"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apr().V1alpha1().KVRocksBackups().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("kvrocksrestores"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apr().V1alpha1().KVRocksRestores().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("middlewarerequests"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apr().V1alpha1().MiddlewareRequests().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("pgclusters"):

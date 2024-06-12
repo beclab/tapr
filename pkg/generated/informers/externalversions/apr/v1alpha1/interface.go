@@ -8,6 +8,10 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// KVRocksBackups returns a KVRocksBackupInformer.
+	KVRocksBackups() KVRocksBackupInformer
+	// KVRocksRestores returns a KVRocksRestoreInformer.
+	KVRocksRestores() KVRocksRestoreInformer
 	// MiddlewareRequests returns a MiddlewareRequestInformer.
 	MiddlewareRequests() MiddlewareRequestInformer
 	// PGClusters returns a PGClusterInformer.
@@ -31,6 +35,16 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// KVRocksBackups returns a KVRocksBackupInformer.
+func (v *version) KVRocksBackups() KVRocksBackupInformer {
+	return &kVRocksBackupInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// KVRocksRestores returns a KVRocksRestoreInformer.
+func (v *version) KVRocksRestores() KVRocksRestoreInformer {
+	return &kVRocksRestoreInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // MiddlewareRequests returns a MiddlewareRequestInformer.

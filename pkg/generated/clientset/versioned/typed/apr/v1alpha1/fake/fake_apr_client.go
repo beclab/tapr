@@ -12,6 +12,14 @@ type FakeAprV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeAprV1alpha1) KVRocksBackups(namespace string) v1alpha1.KVRocksBackupInterface {
+	return &FakeKVRocksBackups{c, namespace}
+}
+
+func (c *FakeAprV1alpha1) KVRocksRestores(namespace string) v1alpha1.KVRocksRestoreInterface {
+	return &FakeKVRocksRestores{c, namespace}
+}
+
 func (c *FakeAprV1alpha1) MiddlewareRequests(namespace string) v1alpha1.MiddlewareRequestInterface {
 	return &FakeMiddlewareRequests{c, namespace}
 }

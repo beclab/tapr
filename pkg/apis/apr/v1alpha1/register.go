@@ -42,6 +42,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&SysEventRegistryList{},
 		&RedixCluster{},
 		&RedixClusterList{},
+		&KVRocksBackup{},
+		&KVRocksBackupList{},
+		&KVRocksRestore{},
+		&KVRocksRestoreList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
