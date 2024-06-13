@@ -240,7 +240,7 @@ func (w *Watcher) backup() error {
 		}()
 	}
 
-	runBackup(w.backupRedis)
+	runBackup(w.backupRedix)
 	runBackup(w.backupMongo)
 	runBackup(w.backupPostgres)
 
@@ -273,7 +273,7 @@ func (w *Watcher) restore() error {
 	}
 
 	runRestore(w.restorePostgres)
-	runRestore(w.restoreRedis)
+	runRestore(w.restoreRedix)
 
 	wg.Wait()
 

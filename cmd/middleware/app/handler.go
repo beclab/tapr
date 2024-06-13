@@ -9,6 +9,7 @@ import (
 	"bytetrade.io/web3os/tapr/pkg/workload/percona"
 	rediscluster "bytetrade.io/web3os/tapr/pkg/workload/redis-cluster"
 	"bytetrade.io/web3os/tapr/pkg/workload/zinc"
+
 	"github.com/gofiber/fiber/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -74,7 +75,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			}
 
 			for _, d := range m.Spec.MongoDB.Databases {
-				dbs = append(dbs, Database{Name: d})
+				dbs = append(dbs, Database{Name: d.Name})
 			}
 
 		case aprv1.TypePostgreSQL:

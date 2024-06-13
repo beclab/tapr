@@ -65,7 +65,7 @@ func (w *Watcher) restoreRedis() error {
 	klog.Info("start to restore all users' redis clusters, of ", len(clusters))
 	for _, cluster := range clusters {
 		updateCluster := cluster
-		if &cluster.Status != nil && &cluster.Status.Restore != nil && cluster.Status.Restore.Backup != nil {
+		if cluster.Status.Restore.Backup != nil {
 			cluster.Status.Restore.Backup = nil
 			updateCluster, err = rediscluster.UpdataClusterStatus(w.ctx, w.dynamicClient, updateCluster)
 			if err != nil {

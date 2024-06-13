@@ -25,3 +25,7 @@ func GetUserDBPVCName(ctx context.Context, client *kubernetes.Clientset, namespa
 
 	return pvc, nil
 }
+
+func AnyPtr[T any](t T) *T {
+	return &t
+}
