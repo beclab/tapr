@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"bytetrade.io/web3os/tapr/pkg/app/middleware"
@@ -10,7 +11,6 @@ import (
 	"bytetrade.io/web3os/tapr/pkg/vault/infisical/controllers"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"go.mongodb.org/mongo-driver/mongo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -24,29 +24,27 @@ type Server struct {
 
 func (s *Server) Init() error {
 	ctx := context.Background()
-	mongouser, password, err := s.getMongoUserAndPwd(ctx)
+	pguser, password, err := s.getPostgresUserAndPwd(ctx)
 	if err != nil {
 		return err
 	}
 
-	mongoClient := infisical.MongoClient{
-		User:     mongouser,
-		Password: password,
-		Database: infisical.InfisicalDBName,
-		Addr:     infisical.InfisicalDBAddr,
-	}
+	var client *infisical.PostgresClient
 
-	// try and wait for infisical mongodb to connect
+	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", pguser, password, infisical.InfisicalDBAddr, infisical.InfisicalDBName)
+
+	// try and wait for infisical postgres to connect
 	func() {
 		for {
-			if err := mongoClient.TryConnect(); err != nil {
-				klog.Info("connecting infisical mongo error, ", err, ".  Waiting ... ")
+			if client, err = infisical.NewClient(dsn); err != nil {
+				klog.Info("connecting infisical postres error, ", err, ".  Waiting ... ")
 				time.Sleep(time.Second)
 			} else {
 				return
 			}
 		}
 	}()
+	defer client.Close()
 
 	// init user
 	user, err := kubesphere.GetUser(ctx, s.KubeConfig, infisical.Owner)
@@ -54,9 +52,13 @@ func (s *Server) Init() error {
 		return err
 	}
 
-	_, err = mongoClient.GetUser(ctx, user.Spec.Email)
-	if err != nil && err == mongo.ErrNoDocuments {
-		err = infisical.InsertKsUser(ctx, &mongoClient, infisical.Owner, user.Spec.Email, infisical.Password)
+	u, err := client.GetUser(ctx, user.Spec.Email)
+	if err != nil {
+		return err
+	}
+
+	if u == nil {
+		err = infisical.InsertKsUserToPostgres(ctx, client, infisical.Owner, user.Spec.Email, infisical.Password)
 		if err != nil {
 			klog.Error("init user error, ", err)
 			return err
@@ -81,7 +83,7 @@ func (s *Server) ServerRun() {
 	routes.WithClientset(clientSet).
 		WithDynamicClient(dynamic.NewForConfigOrDie(s.KubeConfig))
 
-	tokenIssuer := infisical.NewTokenIssuer(s.KubeConfig).WithMongoUserAndPwd(s.getMongoUserAndPwd)
+	tokenIssuer := infisical.NewTokenIssuer(s.KubeConfig).WithUserAndPwd(s.getPostgresUserAndPwd)
 	// tapr auth token for infisical
 	app.Post("/tapr/auth/token",
 		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
@@ -166,19 +168,32 @@ func (s *Server) ServerRun() {
 	klog.Fatal(app.Listen(":8080"))
 }
 
-func (s *Server) getMongoUserAndPwd(ctx context.Context) (user string, pwd string, err error) {
+func (s *Server) getSecretPwd(ctx context.Context, secretName string, secretKey string) (pwd string, err error) {
 	client, err := kubernetes.NewForConfig(s.KubeConfig)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	mongoSecret, err := client.CoreV1().Secrets(infisical.InfisicalNamespace).Get(ctx, "infisical-mongodb", metav1.GetOptions{})
+	secret, err := client.CoreV1().Secrets(infisical.InfisicalNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
+	pwd = string(secret.Data[secretKey])
+
+	return pwd, nil
+}
+
+func (s *Server) getMongoUserAndPwd(ctx context.Context) (user string, pwd string, err error) {
 	user = infisical.InfisicalDBUser
-	pwd = string(mongoSecret.Data["mongodb-passwords"])
+	pwd, err = s.getSecretPwd(ctx, "infisical-mongodb", "mongodb-passwords")
+
+	return user, pwd, nil
+}
+
+func (s *Server) getPostgresUserAndPwd(ctx context.Context) (user string, pwd string, err error) {
+	user = infisical.InfisicalDBUser
+	pwd, err = s.getSecretPwd(ctx, "infisical-postgres", "postgres-passwords")
 
 	return user, pwd, nil
 }

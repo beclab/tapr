@@ -58,7 +58,7 @@ type Organizations struct {
 }
 
 type Workspace struct {
-	Id   string `json:"_id"`
+	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 
