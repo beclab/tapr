@@ -49,8 +49,16 @@ func (c *controller) handler(action Action, obj interface{}) error {
 			}
 		}
 	case aprv1.TypeRedis:
-		if err := c.reconcileRedisPassword(request); err != nil {
-			return err
+		switch action {
+		case ADD, UPDATE:
+			if err := c.createOrUpdateRedixRequest(request, action == UPDATE); err != nil {
+				return err
+			}
+
+		case DELETE:
+			if err := c.deleteRedixRequest(request); err != nil {
+				return err
+			}
 		}
 	case aprv1.TypeZinc:
 		switch action {

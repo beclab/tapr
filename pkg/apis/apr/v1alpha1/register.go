@@ -40,6 +40,12 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&MiddlewareRequestList{},
 		&SysEventRegistry{},
 		&SysEventRegistryList{},
+		&RedixCluster{},
+		&RedixClusterList{},
+		&KVRocksBackup{},
+		&KVRocksBackupList{},
+		&KVRocksRestore{},
+		&KVRocksRestoreList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
