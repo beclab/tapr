@@ -16,11 +16,11 @@ func TestNamespace(t *testing.T) {
 	})
 
 	newcli := &kvrClient{cli}
-	ns, err := newcli.ListNamespace(context.Background())
+	ns, err := newcli.GetNamespace(context.Background(), "ns1")
 	if err != nil {
 		t.Log(err)
 		t.Fail()
 	}
 
-	fmt.Printf("result: %v", ns[0].Token)
+	fmt.Printf("result: %v", ns.Token)
 }

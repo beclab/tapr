@@ -38,7 +38,7 @@ FROM gcr.io/distroless/base:debug
 WORKDIR /
 COPY --from=builder /workspace/middleware-operator .
 COPY --from=builder /usr/bin/mongosh /usr/bin
-COPY --from=builder /usr/lib/x86_64-linux-gnu/* /usr/lib/x86_64-linux-gnu
+COPY --from=builder /usr/lib/x86_64-linux-gnu/* /usr/lib/x86_64-linux-gnu/
 COPY --from=builder /lib/x86_64-linux-gnu/libcom_err.so.2 /usr/lib/x86_64-linux-gnu
 COPY --from=builder /lib/x86_64-linux-gnu/libgcc_s.so.1 /usr/lib/x86_64-linux-gnu
 COPY --from=builder /lib/x86_64-linux-gnu/libkeyutils.so.1 /usr/lib/x86_64-linux-gnu

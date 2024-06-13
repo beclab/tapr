@@ -64,6 +64,25 @@ func GetKVRocksDefineByUser(ctx context.Context, client *kubernetes.Clientset,
 	sts.Namespace = namespace
 	sts.Name = kvrocksDef.Name
 
+	for i, c := range sts.Spec.Template.Spec.Containers {
+		if c.Name == "kvrocks" {
+			ptrC := &sts.Spec.Template.Spec.Containers[i]
+			if kvrocksDef.Spec.KVRocks.Image != "" {
+				ptrC.Image = kvrocksDef.Spec.KVRocks.Image
+			}
+
+			if kvrocksDef.Spec.KVRocks.ImagePullPolicy != "" {
+				ptrC.ImagePullPolicy = kvrocksDef.Spec.KVRocks.ImagePullPolicy
+			}
+
+			if kvrocksDef.Spec.KVRocks.Resources != nil {
+				ptrC.Resources = *kvrocksDef.Spec.KVRocks.Resources
+			}
+
+			break
+		}
+	}
+
 	for i, vol := range sts.Spec.Template.Spec.Volumes {
 		if vol.Name == KVRocksVolumeName {
 			sts.Spec.Template.Spec.Volumes[i].HostPath.Path = pvc + "/kvrdata"
@@ -104,7 +123,7 @@ func CreateKVRocks(ctx context.Context,
 	clusterDef *v1alpha1.RedixCluster) (*appv1.StatefulSet, error) {
 
 	// create sts
-	klog.Info("creating kvrocks workload")
+	klog.Info("creating kvrocks workload, ", clusterDef.Spec.KVRocks.Image)
 	sts, err := createKVRocks(ctx, client, clusterDef)
 	if err != nil {
 		klog.Error("create kvrocks error, ", err)
@@ -174,9 +193,12 @@ func WaitForPodRunning(ctx context.Context, client *kubernetes.Clientset, namesp
 	time.Sleep(2 * time.Second)
 
 	var podIP string
-	err := wait.PollImmediate(time.Second, 10*time.Minute, func() (bool, error) {
+	err := wait.PollWithContext(ctx, time.Second, 10*time.Minute, func(ctx context.Context) (done bool, err error) {
 		pod, err := client.CoreV1().Pods(namespace).Get(ctx, podname, metav1.GetOptions{})
 		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
 
@@ -266,8 +288,10 @@ func DeleteKVRocks(ctx context.Context,
 	return nil
 }
 
-func getServiceName(clusterName string) string {
-	return fmt.Sprintf("%s-svc", clusterName)
+func getServiceName(_ string) string {
+	// return fmt.Sprintf("%s-svc", clusterName)
+
+	return "redis-cluster-proxy"
 }
 
 func BackupKVRocks(ctx context.Context,
@@ -639,11 +663,10 @@ func (cli *kvrClient) AddNamespace(ctx context.Context, namespace, token string)
 func (cli *kvrClient) GetNamespace(ctx context.Context, namespace string) (*Namespace, error) {
 	cmd := cli.Namespace(ctx, "get", namespace)
 	if cmd.Err() != nil {
+		if cmd.Err() == redis.Nil { // not found
+			return nil, nil
+		}
 		return nil, cmd.Err()
-	}
-
-	if cmd.String() == "" {
-		return nil, nil
 	}
 
 	return &Namespace{namespace, cmd.String()}, nil
@@ -652,6 +675,9 @@ func (cli *kvrClient) GetNamespace(ctx context.Context, namespace string) (*Name
 func (cli *kvrClient) ListNamespace(ctx context.Context) ([]*Namespace, error) {
 	cmd := cli.Namespace(ctx, "get", "*")
 	if cmd.Err() != nil {
+		if cmd.Err() == redis.Nil { // not found
+			return nil, nil
+		}
 		return nil, cmd.Err()
 	}
 

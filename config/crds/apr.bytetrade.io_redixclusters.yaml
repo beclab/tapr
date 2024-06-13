@@ -154,9 +154,7 @@ spec:
                         type: object
                     type: object
                 required:
-                - image
                 - owner
-                - resources
                 type: object
               type:
                 type: string

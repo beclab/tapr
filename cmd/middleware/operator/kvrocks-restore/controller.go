@@ -33,7 +33,7 @@ type controller struct {
 	informerFactory informers.SharedInformerFactory
 	synced          cache.InformerSynced
 	informer        cache.SharedIndexInformer
-	lister          v1alpha1.RedixClusterLister
+	lister          v1alpha1.KVRocksRestoreLister
 	aprClientSet    *aprclientset.Clientset
 	k8sClientSet    *kubernetes.Clientset
 	ctx             context.Context
@@ -49,7 +49,7 @@ func NewController(kubeConfig *rest.Config, mainCtx context.Context) *controller
 	clientset := aprclientset.NewForConfigOrDie(kubeConfig)
 
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
-	informer := informerFactory.Apr().V1alpha1().RedixClusters()
+	informer := informerFactory.Apr().V1alpha1().KVRocksRestores()
 
 	ctrlr := &controller{
 		aprClientSet:    clientset,

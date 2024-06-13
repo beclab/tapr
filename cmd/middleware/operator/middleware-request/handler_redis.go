@@ -1,6 +1,8 @@
 package middlewarerequest
 
 import (
+	"fmt"
+
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/workload/kvrocks"
@@ -71,12 +73,12 @@ func (c *controller) createOrUpdateKVRocksRequest(req *aprv1.MiddlewareRequest, 
 	cli, err := kvrocks.GetKVRocksClient(c.ctx, c.k8sClientSet, cluster)
 	if err != nil {
 		klog.Error("get kvrocks client error, ", err)
-		return nil
+		return err
 	}
 	defer cli.Close()
 
 	// TODO: redis db support
-	requestNamespace := req.Spec.Redis.Namespace
+	requestNamespace := GetKVRocksNamespaceName(req.Namespace, req.Spec.Redis.Namespace)
 	token, err := req.Spec.Redis.Password.GetVarValue(c.ctx, c.k8sClientSet, req.Namespace)
 	if err != nil {
 		klog.Error("get redis request password error, ", err, ", ", req.Name, ", ", req.Namespace)
@@ -133,12 +135,12 @@ func (c *controller) deleteKVRocksRequest(req *aprv1.MiddlewareRequest, cluster 
 	cli, err := kvrocks.GetKVRocksClient(c.ctx, c.k8sClientSet, cluster)
 	if err != nil {
 		klog.Error("get kvrocks client error, ", err)
-		return nil
+		return err
 	}
 	defer cli.Close()
 
 	// TODO: redis db support
-	requestNamespace := req.Spec.Redis.Namespace
+	requestNamespace := GetKVRocksNamespaceName(req.Namespace, req.Spec.Redis.Namespace)
 	err = cli.DeleteNamespace(c.ctx, requestNamespace)
 	if err != nil {
 		klog.Error("delete kvrocks namespace error, ", err, ", ", req.Name, ", ", req.Namespace)
@@ -148,4 +150,8 @@ func (c *controller) deleteKVRocksRequest(req *aprv1.MiddlewareRequest, cluster 
 	// TODO: delete the keys of this namespace
 
 	return nil
+}
+
+func GetKVRocksNamespaceName(reqNamespace, dbNamespace string) string {
+	return fmt.Sprintf("%s_%s", reqNamespace, dbNamespace)
 }

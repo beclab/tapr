@@ -16,7 +16,8 @@ const (
 	KVRocksVolumeName       = "kvrdata"
 	KVRocksBackupVolumeName = "kvrbackup"
 	KVRocksBackupDir        = "/backup"
-	KVRocksDataDir          = "/var/lib/kvrocks"
+	KVRocksDataDir          = "/var/lib/kvrocks-data"
+	KVRocksConfDir          = "/var/lib/kvrocks"
 	KVRocksBackupName       = "kvrocks-backup"
 	KVRocksRestoreName      = "kvrocks-restore"
 )
@@ -55,7 +56,7 @@ var (
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command: []string{
 								"kvrocks",
-								"-c", KVRocksDataDir + "/kvrocks.conf",
+								"-c", KVRocksConfDir + "/kvrocks.conf",
 								"--dir", KVRocksDataDir,
 								"--backup-dir", KVRocksBackupDir,
 								"--pidfile", "/var/run/kvrocks/kvrocks.pid",

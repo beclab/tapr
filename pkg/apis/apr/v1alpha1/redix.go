@@ -45,10 +45,10 @@ type KVRocksSpec struct {
 	Password        PasswordVar                  `json:"password,omitempty"`
 	Owner           string                       `json:"owner"`
 	BackupStorage   *string                      `json:"backupStorage,omitempty"`
-	Image           string                       `json:"image"`
+	Image           string                       `json:"image,omitempty"`
 	ImagePullPolicy corev1.PullPolicy            `json:"imagePullPolicy,omitempty"`
 	KVRocksConfig   map[string]string            `json:"kvrocksConfig,omitempty"`
-	Resources       *corev1.ResourceRequirements `json:"resources"`
+	Resources       *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 type RedixType string
