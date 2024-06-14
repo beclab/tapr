@@ -36,7 +36,7 @@ func (server *Server) Init() error {
 	server.app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
 		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH",
-		AllowHeaders: "Origin, Content-Type, Accept, Content-Length, Upload-Offset, Upload-Metadata, Upload-Length",
+		AllowHeaders: "Origin, Content-Type, Accept, Content-Length, Upload-Offset, Upload-Metadata, Upload-Length, X-Authorization, x-authorization",
 	}))
 	server.controller = newController(server)
 	server.fileInfoMgr = fileutils.NewFileInfoMgr()
