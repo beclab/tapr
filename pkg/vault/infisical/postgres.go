@@ -300,7 +300,7 @@ func (c *PostgresClient) SaveUser(basectx context.Context, user *UserPG, userEnc
 	member := OrgMembershipsPG{
 		OrgId:  orgId,
 		UserId: uid,
-		Role:   "owner",
+		Role:   "admin",
 		Status: "accepted",
 	}
 
