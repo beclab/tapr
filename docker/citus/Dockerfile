@@ -23,12 +23,11 @@ RUN apt-get update \
     && curl -s https://install.citusdata.com/community/deb.sh | bash \
     && apt-get install -y postgresql-$PG_MAJOR-citus-11.3=$CITUS_VERSION \
                           postgresql-$PG_MAJOR-hll=2.17.citus-1 \
-                          postgresql-$PG_MAJOR-topn=2.5.0.citus-1 
-#    && apt-get purge -y --auto-remove curl \
-#    && rm -rf /var/lib/apt/lists/* \
+                          postgresql-$PG_MAJOR-topn=2.5.0.citus-1
 
-RUN curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.2.1/vectors-pg15_0.2.1_amd64.deb && \
-    apt-get install ./vectors-pg15_0.2.1_amd64.deb && rm vectors-pg15_0.2.1_amd64.deb
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.2.1/vectors-pg15_0.2.1_${arch}.deb && \
+    apt-get install ./vectors-pg15_0.2.1_${arch}.deb && rm vectors-pg15_0.2.1_${arch}.deb
 
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null \
     && sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' \
