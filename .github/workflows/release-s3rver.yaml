@@ -1,6 +1,6 @@
 
 
-name: Publish to Dockerhub ( ws-gateway )
+name: Publish to Dockerhub ( s3rver )
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         push: true
-        tags: beclab/ws-gateway:${{ github.event.inputs.tags }}
-        file: docker/ws-gateway/Dockerfile
+        tags: beclab/s3rver:${{ github.event.inputs.tags }}
+        file: docker/middleware/Dockerfile.s3rver
         platforms: linux/amd64, linux/arm64
 
