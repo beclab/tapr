@@ -4,10 +4,10 @@
 FROM golang:1.18 as builder
 
 WORKDIR /workspace
-RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
-RUN apt-get update && \
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    apt-get update && \
     wget https://github.com/mongodb-js/mongosh/releases/download/v1.6.2/mongodb-mongosh_1.6.2_${arch}.deb && \
-    apt-get install ./mongodb-mongosh_1.6.2_amd64.deb && \
+    apt-get install ./mongodb-mongosh_1.6.2_${arch}.deb && \
     apt-get install -y libkrb5-3 \
         libssl1.1 \
         libcurl4 \
