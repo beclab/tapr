@@ -1,7 +1,7 @@
 # This file is auto generated from it's template,
 # see citusdata/tools/packaging_automation/templates/docker/latest/latest.tmpl.dockerfile.
-FROM postgres:15.2
-ARG VERSION=11.3.0
+FROM postgres:14.8
+ARG VERSION=12.0.0
 LABEL maintainer="Citus Data https://citusdata.com" \
       org.label-schema.name="Citus" \
       org.label-schema.description="Scalable PostgreSQL for multi-tenant and real-time workloads" \
@@ -19,26 +19,23 @@ RUN apt-get update \
        ca-certificates \
        curl \
        lsb-release \
-       postgresql-15-pgvector 
+       postgresql-14-pgvector 
 
+COPY docker/citus/deb.sh /tmp/deb.sh
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
-    if [ "$arch" == "arm64" ]; then \
-    https://packagecloud.io/install/repositories/j-white/citusdata-community-arm64/script.deb.sh | bash;\
-    else \
-    curl -s https://install.citusdata.com/community/deb.sh | bash; \
-    fi \ 
-    && apt-get install -y postgresql-$PG_MAJOR-citus-11.3=$CITUS_VERSION \
+    bash /tmp/deb.sh $arch | bash \ 
+    && apt-get install -y postgresql-$PG_MAJOR-citus-12.0=$CITUS_VERSION \
                           postgresql-$PG_MAJOR-hll=2.17.citus-1 \
-                          postgresql-$PG_MAJOR-topn=2.5.0.citus-1
+                          postgresql-$PG_MAJOR-topn=2.5.0.citus-1 
 
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
-    curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.2.1/vectors-pg15_0.2.1_${arch}.deb && \
-    apt-get install ./vectors-pg15_0.2.1_${arch}.deb && rm vectors-pg15_0.2.1_${arch}.deb
+    curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.2.1/vectors-pg14_0.2.1_${arch}.deb && \
+    apt-get install ./vectors-pg14_0.2.1_${arch}.deb && rm vectors-pg14_0.2.1_${arch}.deb
 
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null \
     && sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' \
     && apt-get update \
-    && apt-get install -y postgresql-15-postgis-3 \
+    && apt-get install -y postgresql-14-postgis-3 \
     && apt-get purge -y --auto-remove curl \
     && rm -rf /var/lib/apt/lists/*
 
