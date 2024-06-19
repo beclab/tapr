@@ -19,8 +19,14 @@ RUN apt-get update \
        ca-certificates \
        curl \
        lsb-release \
-       postgresql-15-pgvector \
-    && curl -s https://install.citusdata.com/community/deb.sh | bash \
+       postgresql-15-pgvector 
+
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    if [ "$arch" == "arm64" ]; then \
+    https://packagecloud.io/install/repositories/j-white/citusdata-community-arm64/script.deb.sh | bash;\
+    else \
+    curl -s https://install.citusdata.com/community/deb.sh | bash; \
+    fi \ 
     && apt-get install -y postgresql-$PG_MAJOR-citus-11.3=$CITUS_VERSION \
                           postgresql-$PG_MAJOR-hll=2.17.citus-1 \
                           postgresql-$PG_MAJOR-topn=2.5.0.citus-1
