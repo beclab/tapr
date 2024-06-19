@@ -1,8 +1,6 @@
 
-
 # Build the manager binary
 FROM golang:1.18 as builder
-
 WORKDIR /workspace
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
     apt-get update && \
@@ -27,9 +25,23 @@ RUN \
 	go mod download
 
 COPY . .
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    if [ $arch = "arm64" ]; then \
+        LIBP=aarch64; \
+    else \
+        LIBP=x86_64; \
+    fi && \
+    echo "Library path is set to $LIBP" && \
+    cp /usr/lib/${LIBP}-linux-gnu/libkrb5support.so.0 /tmp && \
+    cp /usr/lib/${LIBP}-linux-gnu/libk5crypto.so.3 /tmp && \
+    cp /usr/lib/${LIBP}-linux-gnu/libgssapi_krb5.so.2 /tmp && \
+    cp /usr/lib/${LIBP}-linux-gnu/libkrb5.so.3 /tmp && \
+    cp /lib/${LIBP}-linux-gnu/libcom_err.so.2 /tmp && \
+    cp /lib/${LIBP}-linux-gnu/libgcc_s.so.1 /tmp && \
+    cp /lib/${LIBP}-linux-gnu/libkeyutils.so.1 /tmp
+
 
 RUN go build -ldflags="-s -w" -o middleware-operator cmd/middleware/main.go
-
 
 
 # Use distroless as minimal base image to package the manager binary
@@ -37,16 +49,23 @@ RUN go build -ldflags="-s -w" -o middleware-operator cmd/middleware/main.go
 # FROM gcr.io/distroless/base:nonroot
 FROM gcr.io/distroless/base:debug
 WORKDIR /
+
+COPY --from=builder /bin/sh /bin/sh
+COPY --from=builder /usr/bin/arch /bin/arch
+COPY --from=builder /tmp /tmp
+
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    if [ $arch = "arm64" ]; then \
+       LIBP=aarch64; \
+    else \
+       LIBP=x86_64; \
+    fi && \
+    echo "Library path is set to $LIBP" && \
+    cp /tmp/* /usr/lib/${LIBP}-linux-gnu && \
+    rm -rf /tmp/* /bin/sh /bin/arch
+
 COPY --from=builder /workspace/middleware-operator .
 COPY --from=builder /usr/bin/mongosh /usr/bin
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libkrb5support.so.0 /usr/lib/x86_64-linux-gnu
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libk5crypto.so.3 /usr/lib/x86_64-linux-gnu
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2 /usr/lib/x86_64-linux-gnu
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libkrb5.so.3 /usr/lib/x86_64-linux-gnu
-COPY --from=builder /lib/x86_64-linux-gnu/libcom_err.so.2 /usr/lib/x86_64-linux-gnu
-COPY --from=builder /lib/x86_64-linux-gnu/libgcc_s.so.1 /usr/lib/x86_64-linux-gnu
-COPY --from=builder /lib/x86_64-linux-gnu/libkeyutils.so.1 /usr/lib/x86_64-linux-gnu
-
 
 EXPOSE 8080
 
