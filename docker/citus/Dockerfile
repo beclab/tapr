@@ -23,7 +23,7 @@ RUN apt-get update \
 
 COPY docker/citus/deb.sh /tmp/deb.sh
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
-    bash /tmp/deb.sh $arch | bash \ 
+    bash /tmp/deb.sh $arch | bash \
     && apt-get install -y postgresql-$PG_MAJOR-citus-12.0=$CITUS_VERSION \
                           postgresql-$PG_MAJOR-hll=2.17.citus-1 \
                           postgresql-$PG_MAJOR-topn=2.5.0.citus-1 
@@ -31,6 +31,29 @@ RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
     curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.2.1/vectors-pg14_0.2.1_${arch}.deb && \
     apt-get install ./vectors-pg14_0.2.1_${arch}.deb && rm vectors-pg14_0.2.1_${arch}.deb
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       build-essential \
+       postgresql-server-dev-14 \
+       lbzip2 \
+        && curl -sfLO http://www.xunsearch.com/scws/down/scws-1.2.3.tar.bz2  \
+        && tar xf scws-1.2.3.tar.bz2 \
+        && cd scws-1.2.3 \
+        && ./configure \
+        && make install \
+        && cd .. \
+        && curl -sfLO https://github.com/amutu/zhparser/archive/refs/tags/V2.2.tar.gz \
+        && tar xzvf V2.2.tar.gz \
+        && cd zhparser-2.2 \
+        && make \
+        && make install \
+        && cd .. \
+        && apt-get install -y locales-all \
+        && locale-gen zh_CN.UTF-8 \
+        && apt-get purge -y --auto-remove build-essential postgresql-server-dev-14 libpq-dev \
+        && rm -rf scws-1.2.3.tar.bz2 scws-1.2.3 V2.2.tar.gz zhparser-2.2
+
 
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null \
     && sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' \
