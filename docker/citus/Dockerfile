@@ -29,8 +29,8 @@ RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
                           postgresql-$PG_MAJOR-topn=2.5.0.citus-1 
 
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
-    curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.2.1/vectors-pg14_0.2.1_${arch}.deb && \
-    apt-get install ./vectors-pg14_0.2.1_${arch}.deb && rm vectors-pg14_0.2.1_${arch}.deb
+    curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.3.0/vectors-pg14_0.3.0_${arch}.deb && \
+    apt-get install ./vectors-pg14_0.3.0_${arch}.deb && rm vectors-pg14_0.3.0_${arch}.deb
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
