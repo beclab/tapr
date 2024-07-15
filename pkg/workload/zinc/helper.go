@@ -8,62 +8,14 @@ import (
 	"time"
 
 	"bytetrade.io/web3os/tapr/pkg/constants"
+
 	"github.com/emicklei/go-restful"
 	"github.com/go-resty/resty/v2"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
-
-func FindAdminUser(ctx context.Context, client *kubernetes.Clientset) (user, pwd string, err error) {
-	var server *appsv1.StatefulSet
-
-RETRY:
-	server, err = client.AppsV1().StatefulSets(constants.SystemNamespace).Get(ctx, ZincServerName, metav1.GetOptions{})
-	if err != nil {
-		klog.Error("find zinc search server error, ", err)
-		time.Sleep(5 * time.Second)
-		goto RETRY
-	}
-
-	var secret *corev1.Secret
-	for _, c := range server.Spec.Template.Spec.Containers {
-		if c.Name == "zinc-server" {
-			user = "admin" // default admin user
-			for _, e := range c.Env {
-				switch e.Name {
-				case "ZINC_FIRST_ADMIN_USER":
-					user = e.Value
-				case "ZINC_FIRST_ADMIN_PASSWORD":
-					if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
-						secret, err = client.CoreV1().Secrets(constants.SystemNamespace).Get(ctx,
-							e.ValueFrom.SecretKeyRef.Name, metav1.GetOptions{})
-
-						if err != nil {
-							klog.Error("find zinc admin user password secret error, ", err, ", ", e.ValueFrom.SecretKeyRef.Name)
-							return
-						}
-
-						if p, ok := secret.Data[e.ValueFrom.SecretKeyRef.Key]; !ok {
-							err = errors.New("zinc admin user secret without password")
-							return
-						} else {
-							pwd = string(p)
-						}
-
-						return
-					}
-				} // end  switch
-			} // end env loop
-		} // end find container
-	} // end container loop
-
-	klog.Error("zinc admin user not found")
-	err = errors.New("not found")
-	return
-}
 
 func FindIndexConfig(ctx context.Context, client *kubernetes.Clientset, namespace, config, key string) (schema string, err error) {
 	var configMap *corev1.ConfigMap
