@@ -60,18 +60,6 @@ func (c *controller) handler(action Action, obj interface{}) error {
 				return err
 			}
 		}
-	case aprv1.TypeZinc:
-		switch action {
-		case ADD, UPDATE:
-			if err := c.createOrUpdataIndexForUser(request); err != nil {
-				return err
-			}
-
-		case DELETE:
-			if err := c.deleteIndexAndUser(request); err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil

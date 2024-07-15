@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
-	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
 	"bytetrade.io/web3os/tapr/pkg/workload/percona"
 	rediscluster "bytetrade.io/web3os/tapr/pkg/workload/redis-cluster"
@@ -237,25 +236,6 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 			clusterResp = append(clusterResp, &cres)
 		}
 
-	case string(aprv1.TypeZinc):
-		klog.Info("list zinc server crd")
-		user, pwd, err := zinc.FindAdminUser(ctx.UserContext(), s.k8sClientSet)
-		if err != nil {
-			klog.Error("find zinc server password error, ", err)
-			return err
-		}
-
-		cres := MiddlewareClusterResp{
-			MetaInfo: MetaInfo{
-				Name:      zinc.ZincServerName,
-				Namespace: constants.SystemNamespace,
-			},
-			AdminUser: user,
-			Password:  pwd,
-			Nodes:     1,
-		}
-
-		clusterResp = append(clusterResp, &cres)
 	default:
 		return fiber.ErrNotFound
 	}
