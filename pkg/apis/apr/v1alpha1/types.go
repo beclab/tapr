@@ -117,6 +117,9 @@ type MiddlewareSpec struct {
 
 	// +optional
 	Zinc Zinc `json:"zinc,omitempty"`
+
+	// +optional
+	Nats Nats `json:"nats,omitempty"`
 }
 
 type Redis struct {
@@ -144,6 +147,42 @@ type Zinc struct {
 	Indexes  []*ZincIndexConfig `json:"indexes"`
 }
 
+type Nats struct {
+	User     string      `json:"user"`
+	Password PasswordVar `json:"password,omitempty"`
+	Subjects []Subject   `json:"subjects,omitempty"`
+	Refs     []Ref       `json:"refs,omitempty"`
+}
+
+type Subject struct {
+	Name string `json:"name"`
+	//// default allow for appName equals spec.App, others is deny
+	//Pub string `json:"pub"`
+	//// default allow for appName equals spec.App, others is deny
+	//Sub string `json:"sub"`
+	// Permissions indicates the permission that app can perform on this subject
+	Permission Permission  `json:"permission"`
+	Export     *Permission `json:"export,omitempty"`
+}
+
+type Permission struct {
+	AppName string `json:"appName,omitempty"`
+	// default is deny
+	Pub string `json:"pub"`
+	Sub string `json:"sub"`
+}
+
+type Ref struct {
+	AppName      string       `json:"appName"`
+	AppNamespace string       `json:"appNamespace,omitempty"`
+	Subjects     []RefSubject `json:"subjects"`
+}
+
+type RefSubject struct {
+	Name string   `yaml:"name" json:"name"`
+	Perm []string `yaml:"perm" json:"perm"`
+}
+
 type CitusDatabase struct {
 	Name       string   `json:"name"`
 	Extensions []string `json:"extensions,omitempty"`
@@ -169,6 +208,7 @@ const (
 	TypeMongoDB    MiddlewareType = "mongodb"
 	TypeRedis      MiddlewareType = "redis"
 	TypeZinc       MiddlewareType = "zinc"
+	TypeNats       MiddlewareType = "nats"
 )
 
 func (c *CitusDatabase) IsDistributed() bool { return c.Distributed != nil && *c.Distributed }

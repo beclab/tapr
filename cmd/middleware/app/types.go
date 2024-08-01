@@ -34,6 +34,8 @@ type MiddlewareRequestResp struct {
 	Port      int32             `json:"port"`
 	Indexes   map[string]string `json:"indexes"`
 	Databases map[string]string `json:"databases"`
+	Subjects  map[string]string `json:"subjects"`
+	Refs      map[string]string `json:"refs"`
 }
 
 type Proxy struct {

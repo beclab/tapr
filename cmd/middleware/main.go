@@ -41,6 +41,7 @@ func main() {
 	stopCh := signals.SetupSignalHandler(apiCtx, cancel)
 
 	requestController, requestLister := middlewarerequest.NewController(config, apiCtx)
+	configMapController, _ := middlewarerequest.NewConfigmapController(config, apiCtx)
 	pgclusterController, pgclusterLister := pgcluster.NewController(config, apiCtx, requestLister, func(cluster *aprv1.PGCluster) {
 		requestController.PGClusterRecreated(cluster)
 	})
@@ -61,6 +62,7 @@ func main() {
 		go func() { utilruntime.Must(redixClusterController.Run(1)) }()
 		go func() { utilruntime.Must(kvrocksBackupController.Run(1)) }()
 		go func() { utilruntime.Must(kvrocksRestoreController.Run(1)) }()
+		go func() { utilruntime.Must(configMapController.Run(1)) }()
 		go func() { backupWatcher.Start() }()
 	}
 

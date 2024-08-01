@@ -109,6 +109,113 @@ spec:
                 - databases
                 - user
                 type: object
+              nats:
+                properties:
+                  password:
+                    properties:
+                      value:
+                        description: Defaults to "".
+                        type: string
+                      valueFrom:
+                        description: Source for the environment variable's value.
+                          Cannot be used if value is not empty.
+                        properties:
+                          secretKeyRef:
+                            description: Selects a key of a secret in the pod's namespace
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must
+                                  be a valid secret key.
+                                type: string
+                              name:
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key
+                                  must be defined
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                        type: object
+                    type: object
+                  refs:
+                    items:
+                      properties:
+                        appName:
+                          type: string
+                        appNamespace:
+                          type: string
+                        subjects:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                              perm:
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - name
+                            - perm
+                            type: object
+                          type: array
+                      required:
+                      - appName
+                      - subjects
+                      type: object
+                    type: array
+                  subjects:
+                    items:
+                      properties:
+                        export:
+                          properties:
+                            appName:
+                              type: string
+                            pub:
+                              description: default is deny
+                              type: string
+                            sub:
+                              type: string
+                          required:
+                          - pub
+                          - sub
+                          type: object
+                        name:
+                          type: string
+                        permission:
+                          description: |-
+                            // default allow for appName equals spec.App, others is deny
+                            Pub string `json:"pub"`
+                            // default allow for appName equals spec.App, others is deny
+                            Sub string `json:"sub"`
+                            Permissions indicates the permission that app can perform on this subject
+                          properties:
+                            appName:
+                              type: string
+                            pub:
+                              description: default is deny
+                              type: string
+                            sub:
+                              type: string
+                          required:
+                          - pub
+                          - sub
+                          type: object
+                      required:
+                      - name
+                      - permission
+                      type: object
+                    type: array
+                  user:
+                    type: string
+                required:
+                - user
+                type: object
               postgreSQL:
                 properties:
                   databases:
