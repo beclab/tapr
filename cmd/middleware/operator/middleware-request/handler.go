@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
+
+	"k8s.io/klog/v2"
 )
 
 func (c *controller) handler(action Action, obj interface{}) error {
@@ -57,6 +59,18 @@ func (c *controller) handler(action Action, obj interface{}) error {
 
 		case DELETE:
 			if err := c.deleteRedixRequest(request); err != nil {
+				return err
+			}
+		}
+	case aprv1.TypeNats:
+		switch action {
+		case ADD, UPDATE:
+			klog.Infof("create nat user.....")
+			if err := c.createOrUpdateNatsUser(request); err != nil {
+				return err
+			}
+		case DELETE:
+			if err := c.deleteNatsUserAndStream(request); err != nil {
 				return err
 			}
 		}

@@ -1,11 +1,15 @@
 package app
 
 import (
+	"fmt"
+
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
+	"bytetrade.io/web3os/tapr/pkg/workload/nats"
 	"bytetrade.io/web3os/tapr/pkg/workload/percona"
 	rediscluster "bytetrade.io/web3os/tapr/pkg/workload/redis-cluster"
 	"bytetrade.io/web3os/tapr/pkg/workload/zinc"
+
 	"github.com/gofiber/fiber/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -140,6 +144,25 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 		}
 
 		return resp, nil
+	case aprv1.TypeNats:
+		resp.UserName = m.Spec.Nats.User
+		resp.Password, err = m.Spec.Nats.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, mwReq.Namespace)
+		resp.Port = 4222
+		resp.Host = "nats." + mwReq.Namespace
+		resp.Subjects = make(map[string]string)
+		for _, subject := range m.Spec.Nats.Subjects {
+			resp.Subjects[subject.Name] = nats.MakeRealSubjectName(subject.Name, m.Spec.AppNamespace)
+		}
+		appSubjectMap := make(map[string]string)
+		ownerName := nats.GetOwnerNameFromNs(m.Namespace)
+		for _, ref := range m.Spec.Nats.Refs {
+			for _, subject := range ref.Subjects {
+				appSubjectMap[fmt.Sprintf("%s_%s", ref.AppName, subject.Name)] = nats.MakeRealNameForRefSubjectName(ref.AppNamespace, ref.AppName, subject.Name, ownerName)
+			}
+		}
+		resp.Refs = appSubjectMap
+		return resp, nil
+
 	} // end of middleware type
 
 	return nil, fiber.NewError(fiber.StatusNotImplemented, "middleware type unsupported")

@@ -8,6 +8,7 @@ import (
 	aprclientset "bytetrade.io/web3os/tapr/pkg/generated/clientset/versioned"
 	informers "bytetrade.io/web3os/tapr/pkg/generated/informers/externalversions"
 	"bytetrade.io/web3os/tapr/pkg/generated/listers/apr/v1alpha1"
+
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
@@ -208,7 +209,7 @@ func (c *controller) processNextWorkItem() bool {
 }
 
 func (c *controller) syncHandler(obj enqueueObj) error {
-
+	klog.Info("middleware request syncHandler......")
 	return c.handler(obj.action, obj.obj)
 }
 
