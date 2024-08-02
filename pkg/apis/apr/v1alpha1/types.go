@@ -161,8 +161,8 @@ type Subject struct {
 	//// default allow for appName equals spec.App, others is deny
 	//Sub string `json:"sub"`
 	// Permissions indicates the permission that app can perform on this subject
-	Permission Permission  `json:"permission"`
-	Export     *Permission `json:"export,omitempty"`
+	Permission Permission   `json:"permission"`
+	Export     []Permission `json:"export,omitempty"`
 }
 
 type Permission struct {

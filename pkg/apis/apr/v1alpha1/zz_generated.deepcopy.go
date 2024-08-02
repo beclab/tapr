@@ -983,8 +983,8 @@ func (in *Subject) DeepCopyInto(out *Subject) {
 	out.Permission = in.Permission
 	if in.Export != nil {
 		in, out := &in.Export, &out.Export
-		*out = new(Permission)
-		**out = **in
+		*out = make([]Permission, len(*in))
+		copy(*out, *in)
 	}
 }
 
