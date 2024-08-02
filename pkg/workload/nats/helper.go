@@ -123,22 +123,24 @@ func getAllowPubSubSubjectFromMR(request *aprv1.MiddlewareRequest, namespace str
 		pub         string
 		sub         string
 	}
+
 	appExportMap := make(map[string][]export)
 	for _, mr := range mrs.Items {
 		if mr.Spec.Middleware != aprv1.TypeNats {
 			continue
 		}
 		for _, s := range mr.Spec.Nats.Subjects {
-			if s.Export != nil && s.Export.AppName != "" {
-				appExportMap[s.Export.AppName] = append(appExportMap[s.Export.AppName],
+			for _, e := range s.Export {
+				appExportMap[e.AppName] = append(appExportMap[e.AppName],
 					export{
 						subjectName: MakeRealSubjectName(s.Name, mr.Spec.AppNamespace),
-						appName:     s.Export.AppName,
-						pub:         s.Export.Pub,
-						sub:         s.Export.Sub,
+						appName:     e.AppName,
+						pub:         e.Pub,
+						sub:         e.Sub,
 					},
 				)
 			}
+
 		}
 	}
 	klog.Infof("appExportMap: %#v", appExportMap)
