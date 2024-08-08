@@ -4,8 +4,10 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"k8s.io/klog/v2"
+	"time"
 )
 
 // uid returns a unique id. These ids consist of 128 bits from a
@@ -29,4 +31,11 @@ func MakeUid(filePath string) string {
 	md5String := hex.EncodeToString(hash[:])
 	klog.Infof("filePath:%s, uid:%s", filePath, md5String)
 	return md5String
+}
+
+func GenerateUniqueIdentifier(relativePath string) string {
+	// 计算 MD5 哈希
+	h := md5.New()
+	io.WriteString(h, relativePath+time.Now().String())
+	return fmt.Sprintf("%x%s", h.Sum(nil), relativePath)
 }
