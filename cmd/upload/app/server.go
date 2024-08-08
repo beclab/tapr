@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const (
@@ -25,6 +26,7 @@ type Server struct {
 	supportedFileTypes map[string]bool
 	allowAllFileType   bool
 	limitedSize        int64
+	mu                 sync.Mutex
 }
 
 func (server *Server) Init() error {
@@ -58,6 +60,11 @@ func (server *Server) ServerRun() {
 	server.app.Post("/upload/", server.controller.UploadFile)
 	server.app.Patch("/upload/:uid", server.controller.PatchFile)
 	//server.app.Get("/upload/info/:uid?", server.controller.Info)
+
+	server.app.Get("/upload/upload-link", server.controller.UploadLink)
+	server.app.Get("/upload/file-uploaded-bytes", server.controller.UploadedBytes)
+	server.app.Get("/upload/upload-link/:uid", server.controller.UploadChunks)
+	server.app.Post("/upload/upload-link/:uid", server.controller.UploadChunks)
 
 	klog.Info("upload server listening on 40030")
 	klog.Fatal(server.app.Listen(":40030"))

@@ -190,6 +190,73 @@ func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) 
 	return fileSize, nil
 }
 
+func ParseContentRange(ranges string) (int64, bool) {
+	start := strings.Index(ranges, "bytes")
+	end := strings.Index(ranges, "-")
+	slash := strings.Index(ranges, "/")
+
+	if start < 0 || end < 0 || slash < 0 {
+		return -1, false
+	}
+
+	startStr := strings.TrimLeft(ranges[start+len("bytes"):end], " ")
+	firstByte, err := strconv.ParseInt(startStr, 10, 64)
+	if err != nil {
+		return -1, false
+	}
+
+	lastByte, err := strconv.ParseInt(ranges[end+1:slash], 10, 64)
+	if err != nil {
+		return -1, false
+	}
+
+	fileSize, err := strconv.ParseInt(ranges[slash+1:], 10, 64)
+	if err != nil {
+		return -1, false
+	}
+
+	if firstByte > lastByte || lastByte >= fileSize {
+		return -1, false
+	}
+
+	//fsm.rstart = firstByte
+	//fsm.rend = lastByte
+	//fsm.fsize = fileSize
+
+	return firstByte, true
+}
+
+func SaveFile4(fileHeader *multipart.FileHeader, filePath string, offset int64) (int64, error) {
+	// 打开源文件
+	sourceFile, err := fileHeader.Open()
+	if err != nil {
+		return 0, err
+	}
+	defer sourceFile.Close()
+
+	// 打开目标文件准备写入
+	dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return 0, err
+	}
+	defer dstFile.Close()
+
+	// 移动文件指针到指定的偏移量位置
+	_, err = dstFile.Seek(offset, io.SeekStart)
+	if err != nil {
+		return 0, err
+	}
+
+	// 写入源文件内容到目标文件的指定位置
+	n, err := io.Copy(dstFile, sourceFile)
+	if err != nil {
+		return 0, err
+	}
+
+	// 返回写入的字节数和nil错误（如果没有发生错误）
+	return n, nil
+}
+
 func UpdateFileInfo(fileInfo models.FileInfo) error {
 	// Construct file information path
 	infoPath := filepath.Join(UploadsDir, fileInfo.ID+".info")
