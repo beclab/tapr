@@ -59,7 +59,8 @@ func (server *Server) ServerRun() {
 	server.app.Patch("/upload/:uid", server.controller.PatchFile)
 	//server.app.Get("/upload/info/:uid?", server.controller.Info)
 
-	server.app.Get("/upload/upload_link", server.controller.UploadLink)
+	server.app.Get("/upload/upload-link", server.controller.UploadLink)
+	server.app.Get("/upload/file-uploaded-bytes", server.controller.UploadedBytes)
 
 	klog.Info("upload server listening on 40030")
 	klog.Fatal(server.app.Listen(":40030"))
