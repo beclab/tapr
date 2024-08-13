@@ -39,3 +39,17 @@ type FilePatchInfo struct {
 	File         *multipart.FileHeader `json:"file" form:"file" binding:"required"`
 	UploadOffset int64                 `json:"upload_offset" form:"upload_offset" binding:"required"`
 }
+
+type ResumableInfo struct {
+	ResumableChunkNumber      int                   `json:"resumableChunkNumber" form:"resumableChunkNumber"`
+	ResumableChunkSize        int64                 `json:"resumableChunkSize" form:"resumableChunkSize"`
+	ResumableCurrentChunkSize int64                 `json:"resumableCurrentChunkSize" form:"resumableCurrentChunkSize"`
+	ResumableTotalSize        int64                 `json:"resumableTotalSize" form:"resumableTotalSize"`
+	ResumableType             string                `json:"resumableType" form:"resumableType"`
+	ResumableIdentifier       string                `json:"resumableIdentifier" form:"resumableIdentifier"`
+	ResumableFilename         string                `json:"resumableFilename" form:"resumableFilename"`
+	ResumableRelativePath     string                `json:"resumableRelativePath" form:"resumableRelativePath"`
+	ResumableTotalChunks      int                   `json:"resumableTotalChunks" form:"resumableTotalChunks"`
+	ParentDir                 string                `json:"parent_dir" form:"parent_dir"`
+	File                      *multipart.FileHeader `json:"file" form:"file" binding:"required"`
+}
