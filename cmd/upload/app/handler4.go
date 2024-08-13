@@ -47,7 +47,7 @@ func (a *appController) UploadLink(c *fiber.Ctx) error {
 	uploadID := uid.MakeUid(path)
 
 	// 拼接响应字符串
-	uploadLink := fmt.Sprintf("/upload/upload_link/%s", uploadID)
+	uploadLink := fmt.Sprintf("/upload/upload-link/%s", uploadID)
 
 	// 返回生成的链接
 	return c.SendString(uploadLink)
