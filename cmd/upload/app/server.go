@@ -61,6 +61,7 @@ func (server *Server) ServerRun() {
 
 	server.app.Get("/upload/upload-link", server.controller.UploadLink)
 	server.app.Get("/upload/file-uploaded-bytes", server.controller.UploadedBytes)
+	server.app.Get("/upload/upload-link/:uid", server.controller.UploadChunks)
 	server.app.Post("/upload/upload-link/:uid", server.controller.UploadChunks)
 
 	klog.Info("upload server listening on 40030")
