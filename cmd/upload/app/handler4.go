@@ -95,21 +95,22 @@ func (a *appController) UploadedBytes(c *fiber.Ctx) error {
 
 	//Generate unique Upload-ID
 	//uploadID := uid.MakeUid(fullPath)
-	resumableIdentifier := uid.GenerateUniqueIdentifier(fileName)
-	exist, info := a.server.fileInfoMgr.ExistFileInfo(resumableIdentifier)
-	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile(resumableIdentifier)
+	//resumableIdentifier := uid.GenerateUniqueIdentifier(fileName)
+	innerIdentifier := uid.MakeUid(fullPath)
+	exist, info := a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
+	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile(innerIdentifier)
 	if exist {
 		if fileExist {
 			if info.Offset != fileLen {
 				info.Offset = fileLen
-				a.server.fileInfoMgr.UpdateInfo(resumableIdentifier, info)
+				a.server.fileInfoMgr.UpdateInfo(innerIdentifier, info)
 			}
-			klog.Infof("resumableIdentifier:%s, info.Offset:%d", resumableIdentifier, info.Offset)
+			klog.Infof("innerIdentifier:%s, info.Offset:%d", innerIdentifier, info.Offset)
 			responseData["uploadedBytes"] = info.Offset
 		} else if info.Offset == 0 {
-			klog.Warningf("resumableIdentifier:%s, info.Offset:%d", resumableIdentifier, info.Offset)
+			klog.Warningf("innerIdentifier:%s, info.Offset:%d", innerIdentifier, info.Offset)
 		} else {
-			a.server.fileInfoMgr.DelFileInfo(resumableIdentifier)
+			a.server.fileInfoMgr.DelFileInfo(innerIdentifier)
 		}
 	}
 	return c.JSON(responseData)
@@ -155,24 +156,26 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	klog.Infof("uploadID:%s, patchInfo:%+v", uploadID, resumableInfo)
 
 	// Get file information based on upload ID
-	resumableIdentifier := resumableInfo.ResumableIdentifier
-	exist, info := a.server.fileInfoMgr.ExistFileInfo(resumableIdentifier)
+	fullPath := filepath.Join(resumableInfo.ParentDir, resumableInfo.ResumableRelativePath)
+	//resumableIdentifier := resumableInfo.ResumableIdentifier
+	innerIdentifier := uid.MakeUid(fullPath)
+	exist, info := a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
 	if !exist {
-		klog.Warningf("resumableIdentifier %s not exist", resumableIdentifier)
+		klog.Warningf("innerIdentifier %s not exist", innerIdentifier)
 		return c.Status(fiber.StatusBadRequest).JSON(
-			models.NewResponse(1, "Invalid resumableIdentifire", nil))
+			models.NewResponse(1, "Invalid innerIdentifier", nil))
 	}
-	klog.Infof("resumableIdentifier:%s, info:%+v", resumableIdentifier, info)
-	if resumableIdentifier != info.ID {
-		klog.Warningf("resumableIdentifier:%s diff from info:%+v", resumableIdentifier, info)
+	klog.Infof("innerIdentifier:%s, info:%+v", innerIdentifier, info)
+	if innerIdentifier != info.ID {
+		klog.Warningf("innerIdentifier:%s diff from info:%+v", innerIdentifier, info)
 	}
 
 	if resumableInfo.ResumableChunkNumber == 1 {
 		//clear temp file and reset info
-		fileutils.RemoveTempFileAndInfoFile(resumableIdentifier)
+		fileutils.RemoveTempFileAndInfoFile(innerIdentifier)
 		if info.Offset != 0 {
 			info.Offset = 0
-			a.server.fileInfoMgr.UpdateInfo(resumableIdentifier, info)
+			a.server.fileInfoMgr.UpdateInfo(innerIdentifier, info)
 		}
 
 		//do creation when the first chunk
@@ -182,7 +185,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 				models.NewResponse(1, "Parent dir is not exist or is not a dir", nil))
 		}
 
-		fullPath := filepath.Join(resumableInfo.ParentDir, resumableInfo.ResumableRelativePath)
+		//fullPath := filepath.Join(resumableInfo.ParentDir, resumableInfo.ResumableRelativePath)
 
 		dirPath := filepath.Dir(fullPath)
 
@@ -220,30 +223,30 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 		//Generate unique Upload-ID
 		//uploadID := uid.MakeUid(uploadInfo.FullPath)
-		oExist, oInfo := a.server.fileInfoMgr.ExistFileInfo(resumableIdentifier)
-		oFileExist, oFileLen := a.server.fileInfoMgr.CheckTempFile(resumableIdentifier)
+		oExist, oInfo := a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
+		oFileExist, oFileLen := a.server.fileInfoMgr.CheckTempFile(innerIdentifier)
 		if oExist {
 			if oFileExist {
 				if oInfo.Offset != oFileLen {
 					oInfo.Offset = oFileLen
-					a.server.fileInfoMgr.UpdateInfo(resumableIdentifier, oInfo)
+					a.server.fileInfoMgr.UpdateInfo(innerIdentifier, oInfo)
 				}
-				klog.Infof("resumableIdentifier:%s, info.Offset:%d", resumableIdentifier, oInfo.Offset)
+				klog.Infof("innerIdentifier:%s, info.Offset:%d", innerIdentifier, oInfo.Offset)
 				//return c.Status(fiber.StatusOK).JSON(
 				//	models.NewResponse(0, "success", info))
 				return c.JSON(responseData)
 			} else if oInfo.Offset == 0 {
-				klog.Warningf("resumableIdentifier:%s, info.Offset:%d", resumableIdentifier, oInfo.Offset)
+				klog.Warningf("innerIdentifier:%s, info.Offset:%d", innerIdentifier, oInfo.Offset)
 				//return c.Status(fiber.StatusOK).JSON(
 				//	models.NewResponse(0, "success", info))
 				return c.JSON(responseData)
 			} else {
-				a.server.fileInfoMgr.DelFileInfo(resumableIdentifier)
+				a.server.fileInfoMgr.DelFileInfo(innerIdentifier)
 			}
 		}
 
 		fileInfo := models.FileInfo{
-			ID:     resumableIdentifier,
+			ID:     innerIdentifier,
 			Offset: 0,
 			FileMetaData: models.FileMetaData{
 				FileRelativePath: resumableInfo.ResumableRelativePath,
@@ -258,22 +261,22 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 			fileInfo.Offset = oFileLen
 		}
 
-		err = a.server.fileInfoMgr.AddFileInfo(resumableIdentifier, fileInfo)
+		err = a.server.fileInfoMgr.AddFileInfo(innerIdentifier, fileInfo)
 		if err != nil {
-			klog.Warningf("resumableIdentifier:%s, err:%v", resumableIdentifier, err)
+			klog.Warningf("innerIdentifier:%s, err:%v", innerIdentifier, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
 				models.NewResponse(1, "Error save file info", nil))
 		}
 
-		klog.Infof("resumableIdentifier:%s, fileInfo:%+v", resumableIdentifier, fileInfo)
+		klog.Infof("innerIdentifier:%s, fileInfo:%+v", innerIdentifier, fileInfo)
 		//return c.Status(fiber.StatusOK).JSON(
 		//	models.NewResponse(0, "success", fileInfo))
 		// can't return here
 	}
 
-	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile(resumableIdentifier)
+	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile(innerIdentifier)
 	if fileExist {
-		klog.Infof("resumableIdentifier %s temp file exist, info.Offset:%d, fileLen:%d", uploadID, info.Offset, fileLen)
+		klog.Infof("innerIdentifier %s temp file exist, info.Offset:%d, fileLen:%d", uploadID, info.Offset, fileLen)
 		if info.Offset != fileLen {
 			info.Offset = fileLen
 			a.server.fileInfoMgr.UpdateInfo(uploadID, info)
@@ -299,20 +302,20 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	}
 
 	// Write the file contents to the file at the specified path
-	fileSize, err := fileutils.SaveFile(fileHeader, fileutils.GetTempFilePathById(resumableIdentifier))
+	fileSize, err := fileutils.SaveFile(fileHeader, fileutils.GetTempFilePathById(innerIdentifier))
 	if err != nil {
-		klog.Warningf("resumableIdentifier:%s, info:%+v, err:%v", resumableIdentifier, info, err)
+		klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			models.NewResponse(1, err.Error(), info))
 	}
 
 	info.Offset = fileSize
-	a.server.fileInfoMgr.UpdateInfo(resumableIdentifier, info)
+	a.server.fileInfoMgr.UpdateInfo(innerIdentifier, info)
 
 	// Update file information for debug
 	err = fileutils.UpdateFileInfo(info)
 	if err != nil {
-		klog.Warningf("resumableIdentifier:%s, info:%+v, err:%v", resumableIdentifier, info, err)
+		klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			models.NewResponse(1, err.Error(), info))
 	}
@@ -322,13 +325,13 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		// Move the file to the specified upload path
 		err = fileutils.MoveFileByInfo(info)
 		if err != nil {
-			klog.Warningf("resumableIdentifier:%s, info:%+v, err:%v", resumableIdentifier, info, err)
+			klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
 				models.NewResponse(1, err.Error(), info))
 		}
-		a.server.fileInfoMgr.DelFileInfo(resumableIdentifier)
+		a.server.fileInfoMgr.DelFileInfo(innerIdentifier)
 
-		klog.Infof("resumableIdentifier:%s File uploaded successfully info:%+v", resumableIdentifier, info)
+		klog.Infof("innerIdentifier:%s File uploaded successfully info:%+v", innerIdentifier, info)
 		// Return successful response
 
 		finishData := []map[string]interface{}{
@@ -343,7 +346,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		//	models.NewResponse(0, "File uploaded successfully", info))
 	}
 
-	klog.Infof("resumableIdentifier:%s File Continue uploading info:%+v", resumableIdentifier, info)
+	klog.Infof("innerIdentifier:%s File Continue uploading info:%+v", innerIdentifier, info)
 
 	//return c.Status(fiber.StatusOK).JSON(
 	//	models.NewResponse(0, "Continue uploading", info))
