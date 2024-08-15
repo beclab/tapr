@@ -2,15 +2,19 @@ package app
 
 import (
 	"bytetrade.io/web3os/tapr/pkg/constants"
+	"bytetrade.io/web3os/tapr/pkg/signals"
 	"bytetrade.io/web3os/tapr/pkg/upload/fileutils"
+
+	"context"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"math"
 	"os"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 const (
@@ -26,7 +30,8 @@ type Server struct {
 	supportedFileTypes map[string]bool
 	allowAllFileType   bool
 	limitedSize        int64
-	mu                 sync.Mutex
+	context            context.Context
+	k8sClient          *kubernetes.Clientset
 }
 
 func (server *Server) Init() error {
@@ -46,6 +51,15 @@ func (server *Server) Init() error {
 
 	fileutils.Init()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	_ = signals.SetupSignalHandler(ctx, cancel)
+	server.context = ctx
+
+	config := ctrl.GetConfigOrDie()
+	server.k8sClient = kubernetes.NewForConfigOrDie(config)
+
+	PVCs = NewPVCCache(server)
+
 	return nil
 }
 
@@ -63,7 +77,6 @@ func (server *Server) ServerRun() {
 
 	server.app.Get("/upload/upload-link", server.controller.UploadLink)
 	server.app.Get("/upload/file-uploaded-bytes", server.controller.UploadedBytes)
-	server.app.Get("/upload/upload-link/:uid", server.controller.UploadChunks)
 	server.app.Post("/upload/upload-link/:uid", server.controller.UploadChunks)
 
 	klog.Info("upload server listening on 40030")
@@ -111,7 +124,7 @@ func (s *Server) checkType(filetype string) bool {
 }
 
 func (s *Server) checkSize(filesize int64) bool {
-	if filesize <= 0 {
+	if filesize < 0 {
 		return false
 	}
 

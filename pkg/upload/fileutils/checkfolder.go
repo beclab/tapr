@@ -15,7 +15,10 @@ const (
 )
 
 func Init() {
-	cronDeleteOldfolders(UploadsDir)
+	//cronDeleteOldfolders(UploadsDir)
+	for _, uploadsDir := range UploadsDirs4 {
+		cronDeleteOldfolders(uploadsDir)
+	}
 	//checkTempDir(UploadsDir)
 }
 

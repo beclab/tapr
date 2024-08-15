@@ -159,6 +159,10 @@ func GetTempFilePathById(id string) string {
 	return filepath.Join(UploadsDir, id)
 }
 
+func GetTempFilePathById4(id string, uploadsDir string) string {
+	return filepath.Join(uploadsDir, id)
+}
+
 func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) {
 	// Open source file
 	file, err := fileHeader.Open()
@@ -226,40 +230,28 @@ func ParseContentRange(ranges string) (int64, bool) {
 	return firstByte, true
 }
 
-func SaveFile4(fileHeader *multipart.FileHeader, filePath string, offset int64) (int64, error) {
-	// 打开源文件
-	sourceFile, err := fileHeader.Open()
-	if err != nil {
-		return 0, err
-	}
-	defer sourceFile.Close()
-
-	// 打开目标文件准备写入
-	dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return 0, err
-	}
-	defer dstFile.Close()
-
-	// 移动文件指针到指定的偏移量位置
-	_, err = dstFile.Seek(offset, io.SeekStart)
-	if err != nil {
-		return 0, err
-	}
-
-	// 写入源文件内容到目标文件的指定位置
-	n, err := io.Copy(dstFile, sourceFile)
-	if err != nil {
-		return 0, err
-	}
-
-	// 返回写入的字节数和nil错误（如果没有发生错误）
-	return n, nil
-}
-
 func UpdateFileInfo(fileInfo models.FileInfo) error {
 	// Construct file information path
 	infoPath := filepath.Join(UploadsDir, fileInfo.ID+".info")
+
+	// Convert file information to JSON string
+	infoJSON, err := json.Marshal(fileInfo)
+	if err != nil {
+		return err
+	}
+
+	// Write file information
+	err = ioutil.WriteFile(infoPath, infoJSON, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateFileInfo4(fileInfo models.FileInfo, uploadsDir string) error {
+	// Construct file information path
+	infoPath := filepath.Join(uploadsDir, fileInfo.ID+".info")
 
 	// Convert file information to JSON string
 	infoJSON, err := json.Marshal(fileInfo)
@@ -311,6 +303,47 @@ func MoveFileByInfo(fileInfo models.FileInfo) error {
 
 func removeInfoFile(uid string) {
 	infoPath := filepath.Join(UploadsDir, uid+".info")
+	err := os.Remove(infoPath)
+	if err != nil {
+		klog.Warningf("remove %s err:%v", infoPath, err)
+	}
+}
+
+func RemoveTempFileAndInfoFile4(uid string, uploadsDir string) {
+	removeTempFile4(uid, uploadsDir)
+	removeInfoFile4(uid, uploadsDir)
+}
+
+func removeTempFile4(uid string, uploadsDir string) {
+	filePath := filepath.Join(uploadsDir, uid)
+	err := os.Remove(filePath)
+	if err != nil {
+		klog.Warningf("remove %s err:%v", filePath, err)
+	}
+
+}
+
+func MoveFileByInfo4(fileInfo models.FileInfo, uploadsDir string) error {
+	// Construct file path
+	filePath := filepath.Join(uploadsDir, fileInfo.ID)
+
+	// Construct target path
+	destinationPath := fileInfo.FullPath
+
+	// Move files to target path
+	err := MoveFile(filePath, destinationPath)
+	if err != nil {
+		return err
+	}
+
+	// Remove info file
+	removeInfoFile4(fileInfo.ID, uploadsDir)
+
+	return nil
+}
+
+func removeInfoFile4(uid string, uploadsDir string) {
+	infoPath := filepath.Join(uploadsDir, uid+".info")
 	err := os.Remove(infoPath)
 	if err != nil {
 		klog.Warningf("remove %s err:%v", infoPath, err)
