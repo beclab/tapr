@@ -146,7 +146,7 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 		return resp, nil
 	case aprv1.TypeNats:
 		resp.UserName = m.Spec.Nats.User
-		resp.Password, err = m.Spec.Nats.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, mwReq.Namespace)
+		resp.Password, err = m.Spec.Nats.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Spec.AppNamespace)
 		resp.Port = 4222
 		resp.Host = "nats." + mwReq.Namespace
 		resp.Subjects = make(map[string]string)

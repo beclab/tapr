@@ -13,7 +13,7 @@ func (c *controller) createOrUpdateNatsUser(req *aprv1.MiddlewareRequest) error 
 	if req.Spec.Nats.User == "" {
 		return errors.New("nats user is empty")
 	}
-	password, err := req.Spec.Nats.Password.GetVarValue(c.ctx, c.k8sClientSet, req.Namespace)
+	password, err := req.Spec.Nats.Password.GetVarValue(c.ctx, c.k8sClientSet, req.Spec.AppNamespace)
 	if err != nil {
 		klog.Infof("get password err=%v", err)
 		return err
