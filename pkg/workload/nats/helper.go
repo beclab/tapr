@@ -83,7 +83,7 @@ func CreateOrUpdateUser(request *aprv1.MiddlewareRequest, namespace, password st
 }
 
 func getAllowPubSubSubjectFromMR(request *aprv1.MiddlewareRequest, namespace string) ([]string, []string, error) {
-	req := request.Spec.Nats
+	req := request.Spec.Nats.DeepCopy()
 	for i, s := range req.Subjects {
 		req.Subjects[i].Name = MakeRealSubjectName(s.Name, request.Spec.AppNamespace)
 
