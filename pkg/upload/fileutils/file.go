@@ -159,6 +159,10 @@ func GetTempFilePathById(id string) string {
 	return filepath.Join(UploadsDir, id)
 }
 
+func GetTempFilePathById4(id string, uploadsDir string) string {
+	return filepath.Join(uploadsDir, id)
+}
+
 func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) {
 	// Open source file
 	file, err := fileHeader.Open()
@@ -190,9 +194,64 @@ func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) 
 	return fileSize, nil
 }
 
+func ParseContentRange(ranges string) (int64, bool) {
+	start := strings.Index(ranges, "bytes")
+	end := strings.Index(ranges, "-")
+	slash := strings.Index(ranges, "/")
+
+	if start < 0 || end < 0 || slash < 0 {
+		return -1, false
+	}
+
+	startStr := strings.TrimLeft(ranges[start+len("bytes"):end], " ")
+	firstByte, err := strconv.ParseInt(startStr, 10, 64)
+	if err != nil {
+		return -1, false
+	}
+
+	lastByte, err := strconv.ParseInt(ranges[end+1:slash], 10, 64)
+	if err != nil {
+		return -1, false
+	}
+
+	fileSize, err := strconv.ParseInt(ranges[slash+1:], 10, 64)
+	if err != nil {
+		return -1, false
+	}
+
+	if firstByte > lastByte || lastByte >= fileSize {
+		return -1, false
+	}
+
+	//fsm.rstart = firstByte
+	//fsm.rend = lastByte
+	//fsm.fsize = fileSize
+
+	return firstByte, true
+}
+
 func UpdateFileInfo(fileInfo models.FileInfo) error {
 	// Construct file information path
 	infoPath := filepath.Join(UploadsDir, fileInfo.ID+".info")
+
+	// Convert file information to JSON string
+	infoJSON, err := json.Marshal(fileInfo)
+	if err != nil {
+		return err
+	}
+
+	// Write file information
+	err = ioutil.WriteFile(infoPath, infoJSON, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateFileInfo4(fileInfo models.FileInfo, uploadsDir string) error {
+	// Construct file information path
+	infoPath := filepath.Join(uploadsDir, fileInfo.ID+".info")
 
 	// Convert file information to JSON string
 	infoJSON, err := json.Marshal(fileInfo)
@@ -244,6 +303,47 @@ func MoveFileByInfo(fileInfo models.FileInfo) error {
 
 func removeInfoFile(uid string) {
 	infoPath := filepath.Join(UploadsDir, uid+".info")
+	err := os.Remove(infoPath)
+	if err != nil {
+		klog.Warningf("remove %s err:%v", infoPath, err)
+	}
+}
+
+func RemoveTempFileAndInfoFile4(uid string, uploadsDir string) {
+	removeTempFile4(uid, uploadsDir)
+	removeInfoFile4(uid, uploadsDir)
+}
+
+func removeTempFile4(uid string, uploadsDir string) {
+	filePath := filepath.Join(uploadsDir, uid)
+	err := os.Remove(filePath)
+	if err != nil {
+		klog.Warningf("remove %s err:%v", filePath, err)
+	}
+
+}
+
+func MoveFileByInfo4(fileInfo models.FileInfo, uploadsDir string) error {
+	// Construct file path
+	filePath := filepath.Join(uploadsDir, fileInfo.ID)
+
+	// Construct target path
+	destinationPath := fileInfo.FullPath
+
+	// Move files to target path
+	err := MoveFile(filePath, destinationPath)
+	if err != nil {
+		return err
+	}
+
+	// Remove info file
+	removeInfoFile4(fileInfo.ID, uploadsDir)
+
+	return nil
+}
+
+func removeInfoFile4(uid string, uploadsDir string) {
+	infoPath := filepath.Join(uploadsDir, uid+".info")
 	err := os.Remove(infoPath)
 	if err != nil {
 		klog.Warningf("remove %s err:%v", infoPath, err)
