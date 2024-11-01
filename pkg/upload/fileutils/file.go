@@ -163,6 +163,45 @@ func GetTempFilePathById4(id string, uploadsDir string) string {
 	return filepath.Join(uploadsDir, id)
 }
 
+func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) (int64, error) {
+	// Open source file
+	file, err := fileHeader.Open()
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	// Determine file open flags based on newFile parameter
+	var flags int
+	if newFile {
+		flags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+	} else {
+		flags = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+	}
+
+	// Create target file with appropriate flags
+	dstFile, err := os.OpenFile(filePath, flags, 0644)
+	if err != nil {
+		return 0, err
+	}
+	defer dstFile.Close()
+
+	// Write the contents of the source file to the target file
+	_, err = io.Copy(dstFile, file)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get new file size
+	fileInfo, err := dstFile.Stat()
+	if err != nil {
+		return 0, err
+	}
+	fileSize := fileInfo.Size()
+
+	return fileSize, nil
+}
+
 func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) {
 	// Open source file
 	file, err := fileHeader.Open()
@@ -321,6 +360,22 @@ func removeTempFile4(uid string, uploadsDir string) {
 		klog.Warningf("remove %s err:%v", filePath, err)
 	}
 
+}
+
+func ClearTempFileContent(uid string, uploadsDir string) {
+	filePath := filepath.Join(uploadsDir, uid)
+
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		klog.Warningf("failed to open file %s: %v", filePath, err)
+		return
+	}
+	defer file.Close()
+
+	err = file.Truncate(0)
+	if err != nil {
+		klog.Warningf("failed to truncate file %s: %v", filePath, err)
+	}
 }
 
 func MoveFileByInfo4(fileInfo models.FileInfo, uploadsDir string) error {

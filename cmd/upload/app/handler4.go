@@ -372,14 +372,6 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	fileHeader := resumableInfo.File
 	size := fileHeader.Size
 
-	klog.Infof("fileHeader.Size:%d, info.Offset:%d, info.FileSize:%d",
-		fileHeader.Size, info.Offset, info.FileSize)
-	if !a.server.checkSize(size) || size+info.Offset > info.FileSize {
-		klog.Warningf("Unsupported file size uploadSize:%d", size)
-		return c.Status(fiber.StatusBadRequest).JSON(
-			models.NewResponse(1, "Unsupported file size", nil))
-	}
-
 	ranges := c.Get("Content-Range")
 	var offset int64
 	var parsed bool
@@ -391,10 +383,27 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		}
 	}
 
+	var newFile bool = false
+	if info.Offset != offset && offset == 0 {
+		fmt.Println("Retransfering innerIdentifier:", innerIdentifier, ", uploadsDir:", uploadsDir, ", info.Offset:", info.Offset)
+		//fileutils.ClearTempFileContent(innerIdentifier, uploadsDir)
+		newFile = true
+		info.Offset = offset
+		a.server.fileInfoMgr.UpdateInfo(innerIdentifier, info)
+	}
+
+	klog.Infof("fileHeader.Size:%d, info.Offset:%d, info.FileSize:%d",
+		fileHeader.Size, info.Offset, info.FileSize)
+	if !a.server.checkSize(size) || size+info.Offset > info.FileSize {
+		klog.Warningf("Unsupported file size uploadSize:%d", size)
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.NewResponse(1, "Unsupported file size", nil))
+	}
+
 	const maxRetries = 100
 	for retry := 0; retry < maxRetries; retry++ {
 		if info.Offset == offset {
-			fileSize, err := fileutils.SaveFile(fileHeader, fileutils.GetTempFilePathById4(innerIdentifier, uploadsDir))
+			fileSize, err := fileutils.SaveFile4(fileHeader, fileutils.GetTempFilePathById4(innerIdentifier, uploadsDir), newFile)
 			if err != nil {
 				klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
 				return c.Status(fiber.StatusInternalServerError).JSON(
