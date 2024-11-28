@@ -2,13 +2,12 @@ package nats
 
 import (
 	"bytes"
-	"context"
+	"io/ioutil"
 	"strings"
 	"text/template"
 
 	"github.com/mitchellh/mapstructure"
 	load "github.com/nats-io/nats-server/conf"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -79,16 +78,7 @@ func RenderConfigFile(config *Config) error {
 	if err != nil {
 		return err
 	}
-	clientSet, err := newClientSet()
-	if err != nil {
-		return err
-	}
-	cm, err := clientSet.CoreV1().ConfigMaps("os-system").Get(context.TODO(), "nats-config", metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	cm.Data["nats.conf"] = string(data)
-	_, err = clientSet.CoreV1().ConfigMaps("os-system").Update(context.TODO(), cm, metav1.UpdateOptions{})
+	err = ioutil.WriteFile(ConfPath, data, 0644)
 	if err != nil {
 		return err
 	}
