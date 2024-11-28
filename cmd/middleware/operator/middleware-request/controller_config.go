@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	workload_nats "bytetrade.io/web3os/tapr/pkg/workload/nats"
@@ -80,15 +81,7 @@ func (c *configmapController) handleAddObject(obj interface{}) {
 }
 
 func (c *configmapController) handleUpdateObject(obj interface{}) {
-	cm, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		klog.Infof("Not a ConfigMap")
-		return
-	}
-	if cm.Name != "nats-config" {
-		return
-	}
-	c.enqueue(enqueueObj{UPDATE, obj})
+	return
 }
 
 func (c *configmapController) Run(workers int) error {
@@ -157,12 +150,16 @@ func (c *configmapController) handler(action Action, obj interface{}) error {
 		return errors.New("invalid configmap object")
 	}
 
+	if _, err := os.Stat(workload_nats.ConfPath); err == nil {
+		return nil
+	}
+
 	natsConf, exists := cm.Data["nats.conf"]
 	if !exists {
 		klog.Infof("nats.conf not found in configmap data")
 		return errors.New("nats.conf not found in configmap data")
 	}
-	err := os.MkdirAll("/dbdata/nats_data/config", 0755)
+	err := os.MkdirAll(filepath.Dir(workload_nats.ConfPath), 0755)
 	if err != nil {
 		klog.Infof("mkdirall err=%v", err)
 		return err
