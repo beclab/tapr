@@ -56,7 +56,7 @@ func (server *Server) ServerRun() {
 	server.app.Post("/tapr/ws/conn/debug", server.controller.DebugFunc)
 
 	klog.Info("websocket server listening on 40010")
-	klog.Fatal(server.app.Listen("127.0.0.1:40010"))
+	klog.Fatal(server.app.Listen(":40010"))
 }
 
 func (s *Server) getEnvAppInfo() {
