@@ -113,7 +113,7 @@ func getAllowPubSubSubjectFromMR(request *aprv1.MiddlewareRequest, namespace str
 	if err != nil {
 		return allowPubSubject, allowSubSubject, err
 	}
-	mrs, err := aprClient.AprV1alpha1().MiddlewareRequests(namespace).List(context.TODO(), metav1.ListOptions{})
+	mrs, err := aprClient.AprV1alpha1().MiddlewareRequests("").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return allowPubSubject, allowSubSubject, err
 	}
