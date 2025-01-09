@@ -8,6 +8,7 @@ import (
 	"k8s.io/klog/v2"
 	"strings"
 	"sync"
+	"time"
 )
 
 var PVCs *PVCCache = nil
@@ -77,21 +78,26 @@ func GetAnnotation(ctx context.Context, client *kubernetes.Clientset, key string
 	}
 
 	klog.Infof("bfl.Annotations: %+v", bfl.Annotations)
+	klog.Infof("bfl.Annotations[%s]: %s at time %s", key, bfl.Annotations[key], time.Now().Format(time.RFC3339))
 	return bfl.Annotations[key], nil
 }
 
 type PVCCache struct {
-	server      *Server
-	userPvcMap  map[string]string
-	cachePvcMap map[string]string
-	mu          sync.Mutex
+	server       *Server
+	userPvcMap   map[string]string
+	userPvcTime  map[string]time.Time
+	cachePvcMap  map[string]string
+	cachePvcTime map[string]time.Time
+	mu           sync.Mutex
 }
 
 func NewPVCCache(server *Server) *PVCCache {
 	return &PVCCache{
-		server:      server,
-		userPvcMap:  make(map[string]string),
-		cachePvcMap: make(map[string]string),
+		server:       server,
+		userPvcMap:   make(map[string]string),
+		userPvcTime:  make(map[string]time.Time),
+		cachePvcMap:  make(map[string]string),
+		cachePvcTime: make(map[string]time.Time),
 	}
 }
 
@@ -100,7 +106,10 @@ func (p *PVCCache) getUserPVCOrCache(bflName string) (string, error) {
 	defer p.mu.Unlock()
 
 	if val, ok := p.userPvcMap[bflName]; ok {
-		return val, nil
+		if t, ok := p.userPvcTime[bflName]; ok && time.Since(t) <= 2*time.Minute {
+			p.userPvcTime[bflName] = time.Now()
+			return val, nil
+		}
 	}
 
 	userPvc, err := GetAnnotation(p.server.context, p.server.k8sClient, "userspace_pvc", bflName)
@@ -108,6 +117,7 @@ func (p *PVCCache) getUserPVCOrCache(bflName string) (string, error) {
 		return "", err
 	}
 	p.userPvcMap[bflName] = userPvc
+	p.userPvcTime[bflName] = time.Now()
 	return userPvc, nil
 }
 
@@ -116,7 +126,10 @@ func (p *PVCCache) getCachePVCOrCache(bflName string) (string, error) {
 	defer p.mu.Unlock()
 
 	if val, ok := p.cachePvcMap[bflName]; ok {
-		return val, nil
+		if t, ok := p.cachePvcTime[bflName]; ok && time.Since(t) <= 2*time.Minute {
+			p.cachePvcTime[bflName] = time.Now()
+			return val, nil
+		}
 	}
 
 	cachePvc, err := GetAnnotation(p.server.context, p.server.k8sClient, "appcache_pvc", bflName)
@@ -124,5 +137,6 @@ func (p *PVCCache) getCachePVCOrCache(bflName string) (string, error) {
 		return "", err
 	}
 	p.cachePvcMap[bflName] = cachePvc
+	p.cachePvcTime[bflName] = time.Now()
 	return cachePvc, nil
 }

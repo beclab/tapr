@@ -15,6 +15,7 @@ import (
 	"k8s.io/klog/v2"
 	"mime/multipart"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -290,6 +291,7 @@ func UpdateFileInfo(fileInfo models.FileInfo) error {
 
 func UpdateFileInfo4(fileInfo models.FileInfo, uploadsDir string) error {
 	// Construct file information path
+	//infoPath := filepath.Join(uploadsDir, filepath.Base(fileInfo.FullPath)+".uploading.info")
 	infoPath := filepath.Join(uploadsDir, fileInfo.ID+".info")
 
 	// Convert file information to JSON string
@@ -378,12 +380,53 @@ func ClearTempFileContent(uid string, uploadsDir string) {
 	}
 }
 
+func AddVersionSuffix(source string) string {
+	counter := 1
+	dir, name := path.Split(source)
+	ext := filepath.Ext(name)
+	base := strings.TrimSuffix(name, ext)
+
+	for {
+		if _, err := os.Stat(source); err == nil {
+			renamed := fmt.Sprintf("%s(%d)%s", base, counter, ext)
+			source = path.Join(dir, renamed)
+			counter++
+		} else if os.IsNotExist(err) {
+			break
+		} else {
+			fmt.Println("Error checking file:", err)
+			break
+		}
+	}
+
+	return source
+}
+
+func RenameFileByInfo4(fileInfo models.FileInfo, uploadsDir string) error {
+	// Construct the current file path
+	//filePath := fileInfo.FullPath + ".uploading"
+	filePath := filepath.Join(uploadsDir, fileInfo.ID)
+
+	// Construct the target path
+	destinationPath := AddVersionSuffix(fileInfo.FullPath)
+
+	// Perform the move operation by renaming the file
+	err := os.Rename(filePath, destinationPath)
+	if err != nil {
+		return fmt.Errorf("failed to move file: %w", err)
+	}
+
+	// Optionally, you might want to log success or perform additional operations here
+
+	return nil
+}
+
 func MoveFileByInfo4(fileInfo models.FileInfo, uploadsDir string) error {
 	// Construct file path
 	filePath := filepath.Join(uploadsDir, fileInfo.ID)
 
 	// Construct target path
-	destinationPath := fileInfo.FullPath
+	destinationPath := AddVersionSuffix(fileInfo.FullPath)
 
 	// Move files to target path
 	err := MoveFile(filePath, destinationPath)

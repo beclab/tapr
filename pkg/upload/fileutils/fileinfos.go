@@ -49,8 +49,12 @@ func (m *FileInfoMgr) DeleteOldInfos() {
 			klog.Infof("id %s expire del in map, stack:%s", key, debug.Stack())
 			InfoSyncMap.Delete(key)
 			RemoveTempFileAndInfoFile(key.(string))
-			for _, uploadsDir := range UploadsDirs4 {
-				RemoveTempFileAndInfoFile4(key.(string), uploadsDir)
+			//for _, uploadsDir := range UploadsDirs4 {
+			//	RemoveTempFileAndInfoFile4(key.(string), uploadsDir)
+			//}
+			for _, uploadsFile := range UploadsFiles4 {
+				//RemoveTempFileAndInfoFile4(key.(string), filepath.Dir(uploadsFile))
+				RemoveTempFileAndInfoFile4(filepath.Base(uploadsFile), filepath.Dir(uploadsFile))
 			}
 		}
 		return true
@@ -95,9 +99,9 @@ func (m *FileInfoMgr) DelFileInfo(id string) {
 	RemoveTempFileAndInfoFile(id)
 }
 
-func (m *FileInfoMgr) DelFileInfo4(id, uploadsDir string) {
+func (m *FileInfoMgr) DelFileInfo4(id, tmpName, uploadsDir string) {
 	InfoSyncMap.Delete(id)
-	RemoveTempFileAndInfoFile4(id, uploadsDir)
+	RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
 }
 
 func (m *FileInfoMgr) ExistFileInfo(id string) (bool, models.FileInfo) {
