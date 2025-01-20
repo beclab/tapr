@@ -179,16 +179,27 @@ func NewFileHandler() *FileHandler {
 	}
 }
 
+// SaveFile4 saves a file chunk to the specified path
 func (fh *FileHandler) SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) (int64, error) {
 	fh.mu.Lock()
 	defer fh.mu.Unlock()
 
+	// Log function entry
+	klog.Infof("SaveFile4: Starting to save file chunk to %s (newFile: %v)", filePath, newFile)
+
 	// Open the source file
+	startOpen := time.Now()
 	file, err := fileHeader.Open()
 	if err != nil {
+		klog.Errorf("SaveFile4: Failed to open source file: %v", err)
 		return 0, err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			klog.Errorf("SaveFile4: Failed to close source file: %v", err)
+		}
+		klog.Infof("SaveFile4: Source file closed after %v", time.Since(startOpen))
+	}()
 
 	// Determine if the target file should be created as new or appended
 	if newFile {
@@ -196,7 +207,10 @@ func (fh *FileHandler) SaveFile4(fileHeader *multipart.FileHeader, filePath stri
 	}
 
 	// Get the target file handle, creating it if necessary
-	dstFile, exists := fh.files[filePath]
+	var dstFile *os.File
+	var exists bool
+	startGetFile := time.Now()
+	dstFile, exists = fh.files[filePath]
 	if !exists {
 		var flags int
 		if fh.newFiles[filePath] {
@@ -206,23 +220,34 @@ func (fh *FileHandler) SaveFile4(fileHeader *multipart.FileHeader, filePath stri
 		}
 		dstFile, err = os.OpenFile(filePath, flags, 0644)
 		if err != nil {
+			klog.Errorf("SaveFile4: Failed to open target file: %v", err)
 			return 0, err
 		}
 		fh.files[filePath] = dstFile
 	}
+	klog.Infof("SaveFile4: Target file opened after %v", time.Since(startGetFile))
 
 	// Write the contents of the source file to the target file
+	startCopy := time.Now()
 	_, err = io.Copy(dstFile, file)
 	if err != nil {
+		klog.Errorf("SaveFile4: Failed to copy file data: %v", err)
 		return 0, err
 	}
+	klog.Infof("SaveFile4: File data copied after %v", time.Since(startCopy))
 
 	// Get new file size
+	startStat := time.Now()
 	fileInfo, err := dstFile.Stat()
 	if err != nil {
+		klog.Errorf("SaveFile4: Failed to get file info: %v", err)
 		return 0, err
 	}
 	fileSize := fileInfo.Size()
+	klog.Infof("SaveFile4: File size retrieved after %v", time.Since(startStat))
+
+	// Log function exit
+	klog.Infof("SaveFile4: File chunk saved successfully to %s (size: %d bytes)", filePath, fileSize)
 
 	return fileSize, nil
 }
@@ -234,31 +259,36 @@ func (fh *FileHandler) CloseFile(filePath string) error {
 
 	file, exists := fh.files[filePath]
 	if !exists {
-		return nil // No file to close, not an error
+		klog.Infof("CloseFile: No file to close for path %s", filePath)
+		return nil
 	}
 
 	if err := file.Close(); err != nil {
-		klog.Warningf("Failed to close file %s: %v", filePath, err)
+		klog.Warningf("CloseFile: Failed to close file %s: %v", filePath, err)
 		return err
 	}
 
 	delete(fh.files, filePath)
 	delete(fh.newFiles, filePath)
 
+	klog.Infof("CloseFile: File %s closed successfully", filePath)
+
 	return nil
 }
 
+// CloseAll closes all open files managed by the FileHandler
 func (fh *FileHandler) CloseAll() {
 	fh.mu.Lock()
 	defer fh.mu.Unlock()
 
 	for filePath, file := range fh.files {
 		if err := file.Close(); err != nil {
-			klog.Warningf("Failed to close file %s: %v", filePath, err)
+			klog.Warningf("CloseAll: Failed to close file %s: %v", filePath, err)
 		}
 		delete(fh.files, filePath)
 	}
 	fh.newFiles = make(map[string]bool)
+	klog.Info("CloseAll: All files closed successfully")
 }
 
 //func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) (int64, error) {
