@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -164,28 +165,51 @@ func GetTempFilePathById4(id string, uploadsDir string) string {
 	return filepath.Join(uploadsDir, id)
 }
 
-func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) (int64, error) {
-	// Open source file
+// FileHandler is a struct to manage file handles
+type FileHandler struct {
+	mu       sync.Mutex
+	files    map[string]*os.File
+	newFiles map[string]bool
+}
+
+func NewFileHandler() *FileHandler {
+	return &FileHandler{
+		files:    make(map[string]*os.File),
+		newFiles: make(map[string]bool),
+	}
+}
+
+func (fh *FileHandler) SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) (int64, error) {
+	fh.mu.Lock()
+	defer fh.mu.Unlock()
+
+	// Open the source file
 	file, err := fileHeader.Open()
 	if err != nil {
 		return 0, err
 	}
 	defer file.Close()
 
-	// Determine file open flags based on newFile parameter
-	var flags int
+	// Determine if the target file should be created as new or appended
 	if newFile {
-		flags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-	} else {
-		flags = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+		fh.newFiles[filePath] = true
 	}
 
-	// Create target file with appropriate flags
-	dstFile, err := os.OpenFile(filePath, flags, 0644)
-	if err != nil {
-		return 0, err
+	// Get the target file handle, creating it if necessary
+	dstFile, exists := fh.files[filePath]
+	if !exists {
+		var flags int
+		if fh.newFiles[filePath] {
+			flags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+		} else {
+			flags = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+		}
+		dstFile, err = os.OpenFile(filePath, flags, 0644)
+		if err != nil {
+			return 0, err
+		}
+		fh.files[filePath] = dstFile
 	}
-	defer dstFile.Close()
 
 	// Write the contents of the source file to the target file
 	_, err = io.Copy(dstFile, file)
@@ -202,6 +226,79 @@ func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) 
 
 	return fileSize, nil
 }
+
+// CloseFile closes the specified file handle
+func (fh *FileHandler) CloseFile(filePath string) error {
+	fh.mu.Lock()
+	defer fh.mu.Unlock()
+
+	file, exists := fh.files[filePath]
+	if !exists {
+		return nil // No file to close, not an error
+	}
+
+	if err := file.Close(); err != nil {
+		klog.Warningf("Failed to close file %s: %v", filePath, err)
+		return err
+	}
+
+	delete(fh.files, filePath)
+	delete(fh.newFiles, filePath)
+
+	return nil
+}
+
+func (fh *FileHandler) CloseAll() {
+	fh.mu.Lock()
+	defer fh.mu.Unlock()
+
+	for filePath, file := range fh.files {
+		if err := file.Close(); err != nil {
+			klog.Warningf("Failed to close file %s: %v", filePath, err)
+		}
+		delete(fh.files, filePath)
+	}
+	fh.newFiles = make(map[string]bool)
+}
+
+//func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) (int64, error) {
+//	// Open source file
+//	file, err := fileHeader.Open()
+//	if err != nil {
+//		return 0, err
+//	}
+//	defer file.Close()
+//
+//	// Determine file open flags based on newFile parameter
+//	var flags int
+//	if newFile {
+//		flags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+//	} else {
+//		flags = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+//	}
+//
+//	// Create target file with appropriate flags
+//	dstFile, err := os.OpenFile(filePath, flags, 0644)
+//	if err != nil {
+//		return 0, err
+//	}
+//	defer dstFile.Close()
+//
+//	// Write the contents of the source file to the target file
+//	_, err = io.Copy(dstFile, file)
+//	if err != nil {
+//		return 0, err
+//	}
+//
+//	// Get new file size
+//	fileInfo, err := dstFile.Stat()
+//	if err != nil {
+//		return 0, err
+//	}
+//	fileSize := fileInfo.Size()
+//
+//	return fileSize, nil
+//}
 
 func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) {
 	// Open source file

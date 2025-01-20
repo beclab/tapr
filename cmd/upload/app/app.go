@@ -1,11 +1,15 @@
 package app
 
+import "bytetrade.io/web3os/tapr/pkg/upload/fileutils"
+
 type appController struct {
-	server *Server
+	server      *Server
+	fileHandler *fileutils.FileHandler
 }
 
 func newController(server *Server) *appController {
 	return &appController{
-		server: server,
+		server:      server,
+		fileHandler: fileutils.NewFileHandler(),
 	}
 }

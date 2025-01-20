@@ -79,6 +79,7 @@ func (server *Server) ServerRun() {
 	server.app.Get("/upload/file-uploaded-bytes", server.controller.UploadedBytes)
 	server.app.Post("/upload/upload-link/:uid", server.controller.UploadChunks)
 
+	defer server.controller.fileHandler.CloseAll()
 	klog.Info("upload server listening on 40030")
 	klog.Fatal(server.app.Listen(":40030"))
 }

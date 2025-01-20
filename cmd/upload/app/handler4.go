@@ -324,14 +324,6 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	uploadID := c.Params("uid")
 
-	//if !utils.PathExists(uploadsDir) {
-	//	if err := os.MkdirAll(uploadsDir, os.ModePerm); err != nil {
-	//		klog.Warningf("uploadID:%s, err:%v", uploadID, err)
-	//		return c.Status(fiber.StatusInternalServerError).JSON(
-	//			models.NewResponse(1, "failed to create folder", nil))
-	//	}
-	//}
-
 	klog.Infof("uploadID:%s, c:%+v", uploadID, c)
 
 	var resumableInfo models.ResumableInfo
@@ -397,30 +389,6 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	if innerIdentifier != info.ID {
 		klog.Warningf("innerIdentifier:%s diff from info:%+v", innerIdentifier, info)
 	}
-
-	//if resumableInfo.ResumableChunkNumber == 1 {
-	//	fmt.Println("*********Checking Whole File Disk Space***************")
-	//	spaceOk, needs, avails, reserved, err := checkDiskSpace(uploadsDir, resumableInfo.ResumableTotalSize)
-	//	if err != nil {
-	//		fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
-	//		return c.Status(fiber.StatusInternalServerError).JSON(
-	//			models.NewResponse(1, "Disk space check error", nil))
-	//	}
-	//	needsStr := formatBytes(needs)
-	//	availsStr := formatBytes(avails)
-	//	reservedStr := formatBytes(reserved)
-	//	if spaceOk {
-	//		spaceMessage := fmt.Sprintf("Sufficient disk space available. This file requires: %s, while %s is already available (with an additional %s reserved for the system).",
-	//			needsStr, availsStr, reservedStr)
-	//		fmt.Println(spaceMessage)
-	//	} else {
-	//		fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
-	//		errorMessage := fmt.Sprintf("Insufficient disk space available. This file requires: %s, but only %s is available (with an additional %s reserved for the system).",
-	//			needsStr, availsStr, reservedStr)
-	//		return c.Status(fiber.StatusBadRequest).JSON(
-	//			models.NewResponse(1, errorMessage, nil))
-	//	}
-	//}
 
 	if !exist || innerIdentifier != info.ID {
 		//clear temp file and reset info
@@ -634,7 +602,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 		if info.Offset == offset {
 			//fileSize, err := fileutils.SaveFile4(fileHeader, fileutils.GetTempFilePathById4(innerIdentifier, uploadsDir), newFile)
-			fileSize, err := fileutils.SaveFile4(fileHeader, filepath.Join(uploadsDir, tmpName), newFile)
+			fileSize, err := a.fileHandler.SaveFile4(fileHeader, filepath.Join(uploadsDir, tmpName), newFile)
 			if err != nil {
 				klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
 				return c.Status(fiber.StatusInternalServerError).JSON(
@@ -681,6 +649,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(
 				models.NewResponse(1, err.Error(), info))
 		}
+		a.server.controller.fileHandler.CloseFile(filepath.Join(uploadsDir, tmpName))
 		a.server.fileInfoMgr.DelFileInfo4(innerIdentifier, tmpName, uploadsDir)
 
 		klog.Infof("innerIdentifier:%s File uploaded successfully info:%+v", innerIdentifier, info)
