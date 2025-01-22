@@ -5,4 +5,5 @@ const (
 	UploadsDir         = "./uploadstemp"
 )
 
-var UploadsDirs4 map[string]string = map[string]string{}
+// var UploadsDirs4 map[string]string = map[string]string{}
+var UploadsFiles4 map[string]string = map[string]string{}
