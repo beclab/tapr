@@ -10,6 +10,7 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"k8s.io/klog/v2"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -73,6 +74,11 @@ func extractPart(s string) string {
 }
 
 func (a *appController) UploadLink(c *fiber.Ctx) error {
+	if rand.Intn(100) < 10 {
+		return c.Status(fiber.StatusForbidden).JSON(
+			models.NewResponse(1, "HAHA~You got a probability below 10%!", nil))
+	}
+
 	_, userPvc, cachePvc, uploadsDir, err := getPVC(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -126,6 +132,11 @@ func (a *appController) UploadLink(c *fiber.Ctx) error {
 }
 
 func (a *appController) UploadedBytes(c *fiber.Ctx) error {
+	if rand.Intn(100) < 10 {
+		return c.Status(fiber.StatusForbidden).JSON(
+			models.NewResponse(1, "HAHA~You got a probability below 10%!", nil))
+	}
+
 	_, userPvc, cachePvc, uploadsDir, err := getPVC(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -309,6 +320,11 @@ func formatBytes(bytes int64) string {
 }
 
 func (a *appController) UploadChunks(c *fiber.Ctx) error {
+	if rand.Intn(100) < 10 {
+		return c.Status(fiber.StatusForbidden).JSON(
+			models.NewResponse(1, "HAHA~You got a probability below 10%!", nil))
+	}
+
 	fmt.Println("*********Checking Chunk-relative Mem and CPU***************")
 	checkMem()
 	checkCpu()

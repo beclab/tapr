@@ -4,6 +4,7 @@ import (
 	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/signals"
 	"bytetrade.io/web3os/tapr/pkg/upload/fileutils"
+	"time"
 
 	"context"
 	"github.com/gofiber/fiber/v2"
@@ -11,6 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"math"
+	"math/rand"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"strconv"
@@ -60,6 +62,7 @@ func (server *Server) Init() error {
 
 	PVCs = NewPVCCache(server)
 
+	rand.Seed(time.Now().UnixNano())
 	return nil
 }
 
