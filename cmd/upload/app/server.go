@@ -4,6 +4,7 @@ import (
 	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/signals"
 	"bytetrade.io/web3os/tapr/pkg/upload/fileutils"
+	"time"
 
 	"context"
 	"github.com/gofiber/fiber/v2"
@@ -59,6 +60,9 @@ func (server *Server) Init() error {
 	server.k8sClient = kubernetes.NewForConfigOrDie(config)
 
 	PVCs = NewPVCCache(server)
+
+	IDCache = NewCache(24 * time.Hour)
+	IDCache.startCleaner()
 
 	return nil
 }

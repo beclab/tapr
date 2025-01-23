@@ -118,7 +118,11 @@ func (a *appController) UploadLink(c *fiber.Ctx) error {
 		}
 	}
 
-	uploadID := uid.MakeUid(path)
+	timestamp := time.Now().UnixNano()
+	timestampStr := strconv.FormatInt(timestamp, 10)
+	makeIDString := timestampStr + "_" + path
+	uploadID := uid.MakeUid(makeIDString)
+	IDCache.Add(uploadID, path, timestamp)
 
 	uploadLink := fmt.Sprintf("/upload/upload-link/%s", uploadID)
 
@@ -160,6 +164,17 @@ func (a *appController) UploadedBytes(c *fiber.Ctx) error {
 			models.NewResponse(1, "file_relative_path invalid", nil))
 	}
 
+	uploadID := c.Query("upload_id", "")
+	if uploadID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.NewResponse(1, "upload_id invalid", nil))
+	}
+	uploadCache := IDCache.Get(uploadID)
+	if uploadCache == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.NewResponse(1, "upload_id doesn't exist", nil))
+	}
+
 	responseData := make(map[string]interface{})
 	responseData["uploadedBytes"] = 0
 
@@ -176,6 +191,11 @@ func (a *appController) UploadedBytes(c *fiber.Ctx) error {
 
 	//fullPath := AddVersionSuffix(filepath.Join(parentDir, fileName))
 	fullPath := filepath.Join(parentDir, fileName)
+
+	if uploadCache.filePath != fullPath {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.NewResponse(1, "upload_id and filepath don't match", nil))
+	}
 
 	dirPath := filepath.Dir(fullPath)
 
@@ -194,7 +214,8 @@ func (a *appController) UploadedBytes(c *fiber.Ctx) error {
 	//Generate unique Upload-ID
 	//uploadID := uid.MakeUid(fullPath)
 	//resumableIdentifier := uid.GenerateUniqueIdentifier(fileName)
-	innerIdentifier := uid.MakeUid(fullPath)
+	//innerIdentifier := uid.MakeUid(fullPath)
+	innerIdentifier := uploadID
 	tmpName := innerIdentifier
 	fileutils.UploadsFiles4[innerIdentifier] = filepath.Join(uploadsDir, tmpName) // innerIdentifier)
 	exist, info := a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
@@ -212,6 +233,7 @@ func (a *appController) UploadedBytes(c *fiber.Ctx) error {
 			klog.Warningf("innerIdentifier:%s, info.Offset:%d", innerIdentifier, info.Offset)
 		} else {
 			a.server.fileInfoMgr.DelFileInfo4(innerIdentifier, tmpName, uploadsDir)
+			//IDCache.Delete(uploadID)
 		}
 	}
 	return c.JSON(responseData)
@@ -323,6 +345,15 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	responseData["success"] = true
 
 	uploadID := c.Params("uid")
+	if uploadID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.NewResponse(1, "upload_id invalid", nil))
+	}
+	uploadCache := IDCache.Get(uploadID)
+	if uploadCache == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.NewResponse(1, "upload_id doesn't exist", nil))
+	}
 
 	//if !utils.PathExists(uploadsDir) {
 	//	if err := os.MkdirAll(uploadsDir, os.ModePerm); err != nil {
@@ -351,10 +382,10 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	} else {
 		parentDir = rewriteUrl(parentDir, userPvc, "")
 	}
-	if uploadID != uid.MakeUid(parentDir) {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			models.NewResponse(1, "invalid upload link", nil))
-	}
+	//if uploadID != uid.MakeUid(parentDir) {
+	//	return c.Status(fiber.StatusBadRequest).JSON(
+	//		models.NewResponse(1, "invalid upload link", nil))
+	//}
 
 	// change temp file location
 	extracted := extractPart(parentDir)
@@ -381,10 +412,16 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	// Get file information based on upload ID
 	//fullPath := AddVersionSuffix(filepath.Join(parentDir, resumableInfo.ResumableRelativePath))
 	fullPath := filepath.Join(parentDir, resumableInfo.ResumableRelativePath)
+	if uploadCache.filePath != fullPath {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.NewResponse(1, "invalid upload link", nil))
+	}
+
 	//dstName := filepath.Base(fullPath)
 	//tmpName := dstName + ".uploading"
 	//resumableIdentifier := resumableInfo.ResumableIdentifier
-	innerIdentifier := uid.MakeUid(fullPath)
+	//innerIdentifier := uid.MakeUid(fullPath)
+	innerIdentifier := uploadID
 	tmpName := innerIdentifier
 	fileutils.UploadsFiles4[innerIdentifier] = filepath.Join(uploadsDir, tmpName) // innerIdentifier)
 	exist, info := a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
@@ -474,7 +511,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 				finishData := []map[string]interface{}{
 					{
 						"name": resumableInfo.ResumableFilename,
-						"id":   uid.MakeUid(info.FullPath),
+						"id":   uploadID, // uid.MakeUid(info.FullPath),
 						"size": info.FileSize,
 					},
 				}
@@ -510,6 +547,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 				return c.JSON(responseData)
 			} else {
 				a.server.fileInfoMgr.DelFileInfo4(innerIdentifier, tmpName, uploadsDir)
+				//IDCache.Delete(uploadID)
 			}
 		}
 
@@ -614,7 +652,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 			finishData := []map[string]interface{}{
 				{
 					"name": resumableInfo.ResumableFilename,
-					"id":   uid.MakeUid(info.FullPath),
+					"id":   uploadID, //uid.MakeUid(info.FullPath),
 					"size": info.FileSize,
 				},
 			}
@@ -689,10 +727,13 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		finishData := []map[string]interface{}{
 			{
 				"name": resumableInfo.ResumableFilename,
-				"id":   uid.MakeUid(info.FullPath),
+				"id":   uploadID, //uid.MakeUid(info.FullPath),
 				"size": info.FileSize,
 			},
 		}
+
+		// only delete cache when finished, other status by timed cleaning
+		IDCache.Delete(uploadID)
 		return c.JSON(finishData)
 		//return c.Status(fiber.StatusOK).JSON(
 		//	models.NewResponse(0, "File uploaded successfully", info))
