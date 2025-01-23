@@ -34,23 +34,68 @@ func MoveFile(src, dst string) error {
 	return moveFile(src, dst)
 }
 
+func ioCopyFileWithBuffer(sourcePath, targetPath string, bufferSize int) error {
+	sourceFile, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	dir := filepath.Dir(targetPath)
+	baseName := filepath.Base(targetPath)
+
+	tempFileName := fmt.Sprintf(".uploading_%s", baseName)
+	tempFilePath := filepath.Join(dir, tempFileName)
+
+	targetFile, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	defer targetFile.Close()
+
+	buf := make([]byte, bufferSize)
+	for {
+		n, err := sourceFile.Read(buf)
+		if err != nil && err != io.EOF {
+			return err
+		}
+		if n == 0 {
+			break
+		}
+		if _, err := targetFile.Write(buf[:n]); err != nil {
+			return err
+		}
+	}
+
+	if err := targetFile.Sync(); err != nil {
+		return err
+	}
+	return os.Rename(tempFilePath, targetPath)
+}
+
 // moveFile copies a file from source to dest and returns
 // an error if any.
 func moveFile(src, dst string) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
+	//srcFile, err := os.Open(src)
+	//if err != nil {
+	//	return err
+	//}
+	//defer srcFile.Close()
+	//
+	//dstFile, err := os.Create(dst)
+	//if err != nil {
+	//	return err
+	//}
+	//defer dstFile.Close()
+	//
+	//_, err = io.Copy(dstFile, srcFile)
+	//if err != nil {
+	//	return err
+	//}
 
-	dstFile, err := os.Create(dst)
+	err := ioCopyFileWithBuffer(src, dst, 8*1024*1024)
 	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 
