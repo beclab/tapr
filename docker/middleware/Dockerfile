@@ -1,6 +1,6 @@
 
 # Build the manager binary
-FROM golang:1.23 as builder
+FROM golang:1.22 as builder
 WORKDIR /workspace
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
     apt-get update && \
