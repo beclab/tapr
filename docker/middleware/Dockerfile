@@ -5,9 +5,10 @@ WORKDIR /workspace
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
     apt-get update && \
     wget https://github.com/mongodb-js/mongosh/releases/download/v1.6.2/mongodb-mongosh_1.6.2_${arch}.deb && \
-    apt-get install ./mongodb-mongosh_1.6.2_${arch}.deb && \
-    apt-get install -y libkrb5-3 \
-        libssl1.1 \
+    apt-get install ./mongodb-mongosh_1.6.2_${arch}.deb
+
+RUN apt-get update && apt-get install -y libkrb5-3 \
+        libssl-dev \
         libcurl4 \
         libgssapi-krb5-2 \
         libuuid1 \
