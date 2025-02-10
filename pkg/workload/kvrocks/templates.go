@@ -49,6 +49,28 @@ var (
 				},
 
 				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+								{
+									Preference: corev1.NodeSelectorTerm{
+										MatchExpressions: []corev1.NodeSelectorRequirement{
+											{
+												Key:      "kubernetes.io/os",
+												Operator: "In",
+												Values:   []string{"linux"},
+											},
+											{
+												Key:      "node-role.kubernetes.io/master",
+												Operator: "Exists",
+											},
+										},
+									},
+									Weight: 10,
+								},
+							},
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "kvrocks",
