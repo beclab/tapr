@@ -198,8 +198,48 @@ func (a *appController) UploadedBytes(c *fiber.Ctx) error {
 	tmpName := innerIdentifier
 	fileutils.UploadsFiles4[innerIdentifier] = filepath.Join(uploadsDir, tmpName) // innerIdentifier)
 	exist, info := a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
+
+	if !exist {
+		fileInfo := models.FileInfo{
+			ID:     innerIdentifier,
+			Offset: 0,
+			//FileMetaData: models.FileMetaData{
+			//	FileRelativePath: resumableInfo.ResumableRelativePath,
+			//	FileType:         resumableInfo.ResumableType,
+			//	FileSize:         resumableInfo.ResumableTotalSize,
+			//	StoragePath:      parentDir, //resumableInfo.ParentDir,
+			//	FullPath:         fullPath,
+			//},
+		}
+
+		err = a.server.fileInfoMgr.AddFileInfo(innerIdentifier, fileInfo)
+		if err != nil {
+			klog.Warningf("innerIdentifier:%s, err:%v", innerIdentifier, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(
+				models.NewResponse(1, "Error save file info", nil))
+		}
+
+		klog.Infof("innerIdentifier:%s, fileInfo:%+v", innerIdentifier, fileInfo)
+		//return c.Status(fiber.StatusOK).JSON(
+		//	models.NewResponse(0, "success", fileInfo))
+		// can't return here
+		info = fileInfo
+		exist = true
+	}
+
 	//fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(innerIdentifier, uploadsDir)
-	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(tmpName, uploadsDir)
+	////fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(tmpName, uploadsDir)
+	//if fileExist {
+	//	klog.Infof("innerIdentifier %s temp file exist, info.Offset:%d, fileLen:%d", innerIdentifier, info.Offset, fileLen)
+	//	if info.Offset != fileLen {
+	//		info.Offset = fileLen
+	//		a.server.fileInfoMgr.UpdateInfo(innerIdentifier, info)
+	//	}
+	//}
+
+	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(innerIdentifier, uploadsDir)
+	//fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(tmpName, uploadsDir)
+	fmt.Println("***exist: ", exist, " , fileExist: ", fileExist, " , fileLen: ", fileLen)
 	if exist {
 		if fileExist {
 			if info.Offset != fileLen {
@@ -491,8 +531,8 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		//Generate unique Upload-ID
 		//uploadID := uid.MakeUid(uploadInfo.FullPath)
 		oExist, oInfo := a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
-		//oFileExist, oFileLen := a.server.fileInfoMgr.CheckTempFile4(innerIdentifier, uploadsDir)
-		oFileExist, oFileLen := a.server.fileInfoMgr.CheckTempFile4(tmpName, uploadsDir)
+		oFileExist, oFileLen := a.server.fileInfoMgr.CheckTempFile4(innerIdentifier, uploadsDir)
+		//oFileExist, oFileLen := a.server.fileInfoMgr.CheckTempFile4(tmpName, uploadsDir)
 		if oExist {
 			if oFileExist {
 				if oInfo.Offset != oFileLen {
@@ -529,7 +569,38 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 			fileInfo.Offset = oFileLen
 		}
 
+		//a.server.fileInfoMgr.UpdateInfo(innerIdentifier, fileInfo)
 		err = a.server.fileInfoMgr.AddFileInfo(innerIdentifier, fileInfo)
+		if err != nil {
+			klog.Warningf("innerIdentifier:%s, err:%v", innerIdentifier, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(
+				models.NewResponse(1, "Error save file info", nil))
+		}
+
+		klog.Infof("innerIdentifier:%s, fileInfo:%+v", innerIdentifier, fileInfo)
+		//return c.Status(fiber.StatusOK).JSON(
+		//	models.NewResponse(0, "success", fileInfo))
+		// can't return here
+		info = fileInfo
+	} else {
+		fileInfo := models.FileInfo{
+			ID:     innerIdentifier,
+			Offset: 0,
+			FileMetaData: models.FileMetaData{
+				FileRelativePath: resumableInfo.ResumableRelativePath,
+				FileType:         resumableInfo.ResumableType,
+				FileSize:         resumableInfo.ResumableTotalSize,
+				StoragePath:      parentDir, //resumableInfo.ParentDir,
+				FullPath:         fullPath,
+			},
+		}
+
+		//if oFileExist {
+		//	fileInfo.Offset = oFileLen
+		//}
+
+		a.server.fileInfoMgr.UpdateInfo(innerIdentifier, fileInfo)
+		//err = a.server.fileInfoMgr.AddFileInfo(innerIdentifier, fileInfo)
 		if err != nil {
 			klog.Warningf("innerIdentifier:%s, err:%v", innerIdentifier, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
@@ -543,8 +614,8 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		info = fileInfo
 	}
 
-	//fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(innerIdentifier, uploadsDir)
-	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(tmpName, uploadsDir)
+	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(innerIdentifier, uploadsDir)
+	//fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(tmpName, uploadsDir)
 	if fileExist {
 		klog.Infof("innerIdentifier %s temp file exist, info.Offset:%d, fileLen:%d", innerIdentifier, info.Offset, fileLen)
 		if info.Offset != fileLen {
