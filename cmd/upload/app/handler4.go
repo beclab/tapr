@@ -294,13 +294,21 @@ func checkDiskSpace(filePath string, newContentSize int64) (bool, int64, int64, 
 
 	var rootStat, dataStat syscall.Statfs_t
 
+	startTime := time.Now()
 	err = syscall.Statfs("/", &rootStat)
+	endTime := time.Now()
+	duration := endTime.Sub(startTime)
+	fmt.Printf("***root syscall.Statfs took %v\n", duration, "***")
 	if err != nil {
 		return false, 0, 0, 0, fmt.Errorf("failed to get root file system stats: %w", err)
 	}
 	rootAvailableSpace := int64(rootStat.Bavail * uint64(rootStat.Bsize))
 
+	startTime = time.Now()
 	err = syscall.Statfs(filePath, &dataStat)
+	endTime = time.Now()
+	duration = endTime.Sub(startTime)
+	fmt.Printf("***/data syscall.Statfs took %v\n", duration, "***")
 	if err != nil {
 		return false, 0, 0, 0, fmt.Errorf("failed to get /data file system stats: %w", err)
 	}
@@ -638,9 +646,10 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	fmt.Println("*********Checking Chunk-relative Disk Space***************")
 	spaceOk, needs, avails, reserved, err := checkDiskSpace(uploadsDir, info.FileSize-info.Offset)
 	if err != nil {
-		fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
+		//fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
+		fmt.Println("err: ", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
-			models.NewResponse(1, "Disk space check error", nil))
+			models.NewResponse(1, "Disk space check error:", err))
 	}
 	needsStr := formatBytes(needs)
 	availsStr := formatBytes(avails)
