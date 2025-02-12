@@ -638,9 +638,10 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	fmt.Println("*********Checking Chunk-relative Disk Space***************")
 	spaceOk, needs, avails, reserved, err := checkDiskSpace(uploadsDir, info.FileSize-info.Offset)
 	if err != nil {
-		fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
+		//fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
+		fmt.Println("err: ", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
-			models.NewResponse(1, "Disk space check error", nil))
+			models.NewResponse(1, "Disk space check error:", err))
 	}
 	needsStr := formatBytes(needs)
 	availsStr := formatBytes(avails)
