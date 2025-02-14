@@ -44,12 +44,12 @@ func getPVC(c *fiber.Ctx) (string, string, string, string, error) {
 		klog.Info("appcache pvc: ", cachePvc)
 	}
 
-	var uploadsDir = CachePathPrefix + "/" + cachePvc + "/files/uploadstemp"
+	var uploadsDir = CachePathPrefix + "/" + cachePvc + "/files/.uploadstemp"
 	//var uploadsDir = ""
 	//if val, ok := fileutils.UploadsDirs4[bflName]; ok {
 	//	uploadsDir = val
 	//} else {
-	//	uploadsDir = CachePathPrefix + "/" + cachePvc + "/files/uploadstemp"
+	//	uploadsDir = CachePathPrefix + "/" + cachePvc + "/files/.uploadstemp"
 	//	fileutils.UploadsDirs4[bflName] = uploadsDir
 	//}
 
