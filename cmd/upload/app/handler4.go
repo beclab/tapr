@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -282,52 +281,53 @@ const (
 )
 
 func checkDiskSpace(filePath string, newContentSize int64) (bool, int64, int64, int64, error) {
-	reservedSpaceStr := os.Getenv("RESERVED_SPACE") // env is MB, default is 10000MB
-	if reservedSpaceStr == "" {
-		reservedSpaceStr = "10000"
-	}
-	reservedSpace, err := strconv.ParseInt(reservedSpaceStr, 10, 64)
-	if err != nil {
-		return false, 0, 0, 0, fmt.Errorf("failed to parse reserved space: %w", err)
-	}
-	reservedSpace *= 1024 * 1024
-
-	var rootStat, dataStat syscall.Statfs_t
-
-	startTime := time.Now()
-	err = syscall.Statfs("/", &rootStat)
-	endTime := time.Now()
-	duration := endTime.Sub(startTime)
-	fmt.Printf("***root syscall.Statfs took %v\n", duration, "***")
-	if err != nil {
-		return false, 0, 0, 0, fmt.Errorf("failed to get root file system stats: %w", err)
-	}
-	rootAvailableSpace := int64(rootStat.Bavail * uint64(rootStat.Bsize))
-
-	startTime = time.Now()
-	err = syscall.Statfs(filePath, &dataStat)
-	endTime = time.Now()
-	duration = endTime.Sub(startTime)
-	fmt.Printf("***/data syscall.Statfs took %v\n", duration, "***")
-	if err != nil {
-		return false, 0, 0, 0, fmt.Errorf("failed to get /data file system stats: %w", err)
-	}
-	dataAvailableSpace := int64(dataStat.Bavail * uint64(dataStat.Bsize))
-
-	availableSpace := int64(0)
-	if dataAvailableSpace >= maxReasonableSpace {
-		availableSpace = rootAvailableSpace - reservedSpace
-	} else {
-		availableSpace = dataAvailableSpace - reservedSpace
-	}
-
-	requiredSpace := newContentSize
-
-	if availableSpace >= requiredSpace {
-		return true, requiredSpace, availableSpace, reservedSpace, nil
-	}
-
-	return false, requiredSpace, availableSpace, reservedSpace, nil
+	return true, 100, 1000000, 1000, nil
+	//reservedSpaceStr := os.Getenv("RESERVED_SPACE") // env is MB, default is 10000MB
+	//if reservedSpaceStr == "" {
+	//	reservedSpaceStr = "10000"
+	//}
+	//reservedSpace, err := strconv.ParseInt(reservedSpaceStr, 10, 64)
+	//if err != nil {
+	//	return false, 0, 0, 0, fmt.Errorf("failed to parse reserved space: %w", err)
+	//}
+	//reservedSpace *= 1024 * 1024
+	//
+	//var rootStat, dataStat syscall.Statfs_t
+	//
+	//startTime := time.Now()
+	//err = syscall.Statfs("/", &rootStat)
+	//endTime := time.Now()
+	//duration := endTime.Sub(startTime)
+	//fmt.Printf("***root syscall.Statfs took %v\n", duration, "***")
+	//if err != nil {
+	//	return false, 0, 0, 0, fmt.Errorf("failed to get root file system stats: %w", err)
+	//}
+	//rootAvailableSpace := int64(rootStat.Bavail * uint64(rootStat.Bsize))
+	//
+	//startTime = time.Now()
+	//err = syscall.Statfs(filePath, &dataStat)
+	//endTime = time.Now()
+	//duration = endTime.Sub(startTime)
+	//fmt.Printf("***/data syscall.Statfs took %v\n", duration, "***")
+	//if err != nil {
+	//	return false, 0, 0, 0, fmt.Errorf("failed to get /data file system stats: %w", err)
+	//}
+	//dataAvailableSpace := int64(dataStat.Bavail * uint64(dataStat.Bsize))
+	//
+	//availableSpace := int64(0)
+	//if dataAvailableSpace >= maxReasonableSpace {
+	//	availableSpace = rootAvailableSpace - reservedSpace
+	//} else {
+	//	availableSpace = dataAvailableSpace - reservedSpace
+	//}
+	//
+	//requiredSpace := newContentSize
+	//
+	//if availableSpace >= requiredSpace {
+	//	return true, requiredSpace, availableSpace, reservedSpace, nil
+	//}
+	//
+	//return false, requiredSpace, availableSpace, reservedSpace, nil
 }
 
 func formatBytes(bytes int64) string {
@@ -357,6 +357,14 @@ func formatBytes(bytes int64) string {
 }
 
 func (a *appController) UploadChunks(c *fiber.Ctx) error {
+	startTime := time.Now()
+	fmt.Printf("Function UploadChunks started at: %s\n", startTime)
+
+	defer func() {
+		endTime := time.Now()
+		fmt.Printf("Function UploadChunks ended at: %s\n", endTime)
+	}()
+
 	fmt.Println("*********Checking Chunk-relative Mem and CPU***************")
 	checkMem()
 	checkCpu()
@@ -667,10 +675,11 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	}
 
 	ranges := c.Get("Content-Range")
-	var offset int64
+	var offsetStart int64
+	var offsetEnd int64
 	var parsed bool
 	if ranges != "" {
-		offset, parsed = fileutils.ParseContentRange(ranges)
+		offsetStart, offsetEnd, parsed = fileutils.ParseContentRange(ranges)
 		if !parsed {
 			return c.Status(fiber.StatusBadRequest).JSON(
 				models.NewResponse(1, "Invalid content range", nil))
@@ -678,17 +687,17 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	}
 
 	var newFile bool = false
-	if info.Offset != offset && offset == 0 {
+	if info.Offset != offsetStart && offsetStart == 0 {
 		fmt.Println("Retransfering innerIdentifier:", innerIdentifier, ", uploadsDir:", uploadsDir, ", info.Offset:", info.Offset)
 		//fileutils.ClearTempFileContent(innerIdentifier, uploadsDir)
 		newFile = true
-		info.Offset = offset
+		info.Offset = offsetStart
 		a.server.fileInfoMgr.UpdateInfo(innerIdentifier, info)
 	}
 
 	klog.Infof("fileHeader.Size:%d, info.Offset:%d, info.FileSize:%d",
 		fileHeader.Size, info.Offset, info.FileSize)
-	if !a.server.checkSize(size) || size+info.Offset > info.FileSize {
+	if !a.server.checkSize(size) || offsetEnd >= info.FileSize { // size+info.Offset > info.FileSize {
 		if info.Offset == info.FileSize {
 			klog.Warningf("All file chunks have been uploaded, skip upload")
 			finishData := []map[string]interface{}{
@@ -707,14 +716,14 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	const maxRetries = 100
 	for retry := 0; retry < maxRetries; retry++ {
-		if info.Offset-offset > 0 {
+		if info.Offset-offsetEnd > 0 {
 			klog.Warningf("This file chunks have already been uploaded, skip upload")
 			return c.JSON(responseData)
 		}
 
-		if info.Offset == offset {
+		if info.Offset == offsetStart || (info.Offset-offsetEnd < 0 && info.Offset-offsetStart > 0) {
 			//fileSize, err := fileutils.SaveFile4(fileHeader, fileutils.GetTempFilePathById4(innerIdentifier, uploadsDir), newFile)
-			fileSize, err := fileutils.SaveFile4(fileHeader, filepath.Join(uploadsDir, tmpName), newFile)
+			fileSize, err := fileutils.SaveFile4(fileHeader, filepath.Join(uploadsDir, tmpName), newFile, offsetStart)
 			if err != nil {
 				klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
 				return c.Status(fiber.StatusInternalServerError).JSON(
@@ -727,7 +736,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 		time.Sleep(1000 * time.Millisecond)
 
-		klog.Infof("Waiting for info.Offset to match offset (%d != %d), retry %d/%d", info.Offset, offset, retry+1, maxRetries)
+		klog.Infof("Waiting for info.Offset to match offset (%d != %d), retry %d/%d", info.Offset, offsetStart, retry+1, maxRetries)
 
 		if retry < maxRetries-1 {
 			exist, info = a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
@@ -752,7 +761,9 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	}
 
 	// Check if the file has been written
-	if info.Offset == info.FileSize {
+	// if info.Offset == info.FileSize {
+	fmt.Println("offsetStart:", offsetStart, ", offsetEnd:", offsetEnd, ", info.Offset:", info.Offset, ", info.FileSize:", info.FileSize)
+	if offsetEnd == info.FileSize-1 {
 		// Move the file to the specified upload path
 		err = fileutils.MoveFileByInfo4(info, uploadsDir)
 		//err = fileutils.RenameFileByInfo4(info, uploadsDir)

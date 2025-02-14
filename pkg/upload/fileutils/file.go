@@ -209,7 +209,15 @@ func GetTempFilePathById4(id string, uploadsDir string) string {
 	return filepath.Join(uploadsDir, id)
 }
 
-func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) (int64, error) {
+func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool, offset int64) (int64, error) {
+	startTime := time.Now()
+	fmt.Printf("--- Function SaveFile4 started at: %s\n", startTime)
+
+	defer func() {
+		endTime := time.Now()
+		fmt.Printf("--- Function SaveFile4 ended at: %s\n", endTime)
+	}()
+
 	// Open source file
 	file, err := fileHeader.Open()
 	if err != nil {
@@ -232,6 +240,14 @@ func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) 
 	}
 	defer dstFile.Close()
 
+	// Seek to the specified offset if not creating a new file
+	if !newFile {
+		_, err = dstFile.Seek(offset, io.SeekStart)
+		if err != nil {
+			return 0, err
+		}
+	}
+
 	// Write the contents of the source file to the target file
 	_, err = io.Copy(dstFile, file)
 	if err != nil {
@@ -247,6 +263,45 @@ func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) 
 
 	return fileSize, nil
 }
+
+//func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool) (int64, error) {
+//	// Open source file
+//	file, err := fileHeader.Open()
+//	if err != nil {
+//		return 0, err
+//	}
+//	defer file.Close()
+//
+//	// Determine file open flags based on newFile parameter
+//	var flags int
+//	if newFile {
+//		flags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+//	} else {
+//		flags = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+//	}
+//
+//	// Create target file with appropriate flags
+//	dstFile, err := os.OpenFile(filePath, flags, 0644)
+//	if err != nil {
+//		return 0, err
+//	}
+//	defer dstFile.Close()
+//
+//	// Write the contents of the source file to the target file
+//	_, err = io.Copy(dstFile, file)
+//	if err != nil {
+//		return 0, err
+//	}
+//
+//	// Get new file size
+//	fileInfo, err := dstFile.Stat()
+//	if err != nil {
+//		return 0, err
+//	}
+//	fileSize := fileInfo.Size()
+//
+//	return fileSize, nil
+//}
 
 func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) {
 	// Open source file
@@ -279,40 +334,40 @@ func SaveFile(fileHeader *multipart.FileHeader, filePath string) (int64, error) 
 	return fileSize, nil
 }
 
-func ParseContentRange(ranges string) (int64, bool) {
+func ParseContentRange(ranges string) (int64, int64, bool) {
 	start := strings.Index(ranges, "bytes")
 	end := strings.Index(ranges, "-")
 	slash := strings.Index(ranges, "/")
 
 	if start < 0 || end < 0 || slash < 0 {
-		return -1, false
+		return -1, -1, false
 	}
 
 	startStr := strings.TrimLeft(ranges[start+len("bytes"):end], " ")
 	firstByte, err := strconv.ParseInt(startStr, 10, 64)
 	if err != nil {
-		return -1, false
+		return -1, -1, false
 	}
 
 	lastByte, err := strconv.ParseInt(ranges[end+1:slash], 10, 64)
 	if err != nil {
-		return -1, false
+		return -1, -1, false
 	}
 
 	fileSize, err := strconv.ParseInt(ranges[slash+1:], 10, 64)
 	if err != nil {
-		return -1, false
+		return -1, -1, false
 	}
 
 	if firstByte > lastByte || lastByte >= fileSize {
-		return -1, false
+		return -1, -1, false
 	}
 
 	//fsm.rstart = firstByte
 	//fsm.rend = lastByte
 	//fsm.fsize = fileSize
 
-	return firstByte, true
+	return firstByte, lastByte, true
 }
 
 func UpdateFileInfo(fileInfo models.FileInfo) error {
