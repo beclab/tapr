@@ -87,22 +87,17 @@ func getKubersphereConfig(ctx context.Context, kubeconfig *rest.Config) (*Config
 	return c, nil
 }
 
-func ValidateToken(ctx context.Context, kubeconfig *rest.Config, tokenString string) (username string, err error) {
+func ValidateToken(ctx context.Context, kubeConfig *rest.Config, tokenString string) (username string, err error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 
-		// get jwt secret from kubesphere's config
-		config, err := getKubersphereConfig(ctx, kubeconfig)
+		jwtSecretKey, err := getLLdapJwtKey(ctx, kubeConfig)
 		if err != nil {
 			return nil, err
 		}
-
-		if config.AuthenticationOptions == nil || config.AuthenticationOptions.JwtSecret == "" {
-			return nil, fmt.Errorf("jwt secret not found")
-		}
-		return []byte(config.AuthenticationOptions.JwtSecret), nil
+		return jwtSecretKey, nil
 	})
 
 	if err != nil {
@@ -113,6 +108,25 @@ func ValidateToken(ctx context.Context, kubeconfig *rest.Config, tokenString str
 		return claims.Username, nil
 	}
 	return "", fmt.Errorf("invalid token, or claims not match")
+}
+
+func getLLdapJwtKey(ctx context.Context, kubeConfig *rest.Config) ([]byte, error) {
+	kubeClientInService, err := kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := kubeClientInService.CoreV1().Secrets("os-system").Get(ctx, "lldap-credentials", metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	jwtSecretKey, ok := secret.Data["lldap-jwt-secret"]
+	if !ok {
+		return nil, fmt.Errorf("failed to get lldap jwt secret")
+	}
+
+	return jwtSecretKey, nil
 }
 
 func GetUserZone(ctx context.Context, kubeconfig *rest.Config, username string) (string, error) {
