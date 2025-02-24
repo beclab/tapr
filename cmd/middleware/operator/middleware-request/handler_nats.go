@@ -26,7 +26,7 @@ func (c *controller) createOrUpdateNatsUser(req *aprv1.MiddlewareRequest) error 
 	err = workload_nats.CreateOrUpdateStream(req.Spec.AppNamespace, req.Spec.App)
 	if err != nil {
 		klog.Infof("create stream err=%v", err)
-		return nil
+		return err
 	}
 	return nil
 }
