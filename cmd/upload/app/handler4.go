@@ -357,6 +357,14 @@ func formatBytes(bytes int64) string {
 }
 
 func (a *appController) UploadChunks(c *fiber.Ctx) error {
+	startTime := time.Now()
+	fmt.Printf("Function UploadChunks started at: %s\n", startTime)
+
+	defer func() {
+		endTime := time.Now()
+		fmt.Printf("Function UploadChunks ended at: %s\n", endTime)
+	}()
+
 	fmt.Println("*********Checking Chunk-relative Mem and CPU***************")
 	checkMem()
 	checkCpu()
