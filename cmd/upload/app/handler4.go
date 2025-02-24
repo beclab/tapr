@@ -667,10 +667,11 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	}
 
 	ranges := c.Get("Content-Range")
-	var offset int64
+	var offsetStart int64
+	var offsetEnd int64
 	var parsed bool
 	if ranges != "" {
-		offset, parsed = fileutils.ParseContentRange(ranges)
+		offsetStart, offsetEnd, parsed = fileutils.ParseContentRange(ranges)
 		if !parsed {
 			return c.Status(fiber.StatusBadRequest).JSON(
 				models.NewResponse(1, "Invalid content range", nil))
@@ -678,11 +679,11 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	}
 
 	var newFile bool = false
-	if info.Offset != offset && offset == 0 {
+	if info.Offset != offsetStart && offsetStart == 0 {
 		fmt.Println("Retransfering innerIdentifier:", innerIdentifier, ", uploadsDir:", uploadsDir, ", info.Offset:", info.Offset)
 		//fileutils.ClearTempFileContent(innerIdentifier, uploadsDir)
 		newFile = true
-		info.Offset = offset
+		info.Offset = offsetStart
 		a.server.fileInfoMgr.UpdateInfo(innerIdentifier, info)
 	}
 
@@ -707,14 +708,14 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	const maxRetries = 100
 	for retry := 0; retry < maxRetries; retry++ {
-		if info.Offset-offset > 0 {
+		if info.Offset-offsetEnd > 0 {
 			klog.Warningf("This file chunks have already been uploaded, skip upload")
 			return c.JSON(responseData)
 		}
 
-		if info.Offset == offset {
+		if info.Offset == offsetStart || (info.Offset-offsetEnd < 0 && info.Offset-offsetStart > 0) {
 			//fileSize, err := fileutils.SaveFile4(fileHeader, fileutils.GetTempFilePathById4(innerIdentifier, uploadsDir), newFile)
-			fileSize, err := fileutils.SaveFile4(fileHeader, filepath.Join(uploadsDir, tmpName), newFile)
+			fileSize, err := fileutils.SaveFile4(fileHeader, filepath.Join(uploadsDir, tmpName), newFile, offsetStart)
 			if err != nil {
 				klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
 				return c.Status(fiber.StatusInternalServerError).JSON(
@@ -727,7 +728,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 		time.Sleep(1000 * time.Millisecond)
 
-		klog.Infof("Waiting for info.Offset to match offset (%d != %d), retry %d/%d", info.Offset, offset, retry+1, maxRetries)
+		klog.Infof("Waiting for info.Offset to match offset (%d != %d), retry %d/%d", info.Offset, offsetStart, retry+1, maxRetries)
 
 		if retry < maxRetries-1 {
 			exist, info = a.server.fileInfoMgr.ExistFileInfo(innerIdentifier)
