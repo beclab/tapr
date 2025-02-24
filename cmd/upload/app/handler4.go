@@ -697,7 +697,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	klog.Infof("fileHeader.Size:%d, info.Offset:%d, info.FileSize:%d",
 		fileHeader.Size, info.Offset, info.FileSize)
-	if !a.server.checkSize(size) || size+info.Offset > info.FileSize {
+	if !a.server.checkSize(size) || offsetEnd >= info.FileSize { // size+info.Offset > info.FileSize {
 		if info.Offset == info.FileSize {
 			klog.Warningf("All file chunks have been uploaded, skip upload")
 			finishData := []map[string]interface{}{
@@ -761,7 +761,8 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	}
 
 	// Check if the file has been written
-	if info.Offset == info.FileSize {
+	// if info.Offset == info.FileSize {
+	if offsetEnd == info.FileSize {
 		// Move the file to the specified upload path
 		err = fileutils.MoveFileByInfo4(info, uploadsDir)
 		//err = fileutils.RenameFileByInfo4(info, uploadsDir)
