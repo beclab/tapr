@@ -762,7 +762,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	// Check if the file has been written
 	// if info.Offset == info.FileSize {
-	if offsetEnd == info.FileSize {
+	if offsetEnd == info.FileSize-1 {
 		// Move the file to the specified upload path
 		err = fileutils.MoveFileByInfo4(info, uploadsDir)
 		//err = fileutils.RenameFileByInfo4(info, uploadsDir)
