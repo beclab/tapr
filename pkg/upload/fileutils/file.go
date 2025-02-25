@@ -210,6 +210,14 @@ func GetTempFilePathById4(id string, uploadsDir string) string {
 }
 
 func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool, offset int64) (int64, error) {
+	startTime := time.Now()
+	fmt.Printf("--- Function SaveFile4 started at: %s\n", startTime)
+
+	defer func() {
+		endTime := time.Now()
+		fmt.Printf("--- Function SaveFile4 ended at: %s\n", endTime)
+	}()
+
 	// Open source file
 	file, err := fileHeader.Open()
 	if err != nil {
