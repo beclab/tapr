@@ -136,10 +136,8 @@ func DeleteIfFileExpired(filePath string) error {
 				return fmt.Errorf("failed to delete file: %s", err.Error())
 			}
 			klog.Infof("Deleted file: %s\n", filePath)
-			//fmt.Printf("Deleted file: %s\n", filePath)
 		} else {
 			klog.Infof("File %s is not expired (modified %v ago)\n", filePath, time.Since(modTime))
-			//fmt.Printf("File %s is not expired (modified %v ago)\n", filePath, time.Since(modTime))
 		}
 	} else {
 		return fmt.Errorf("provided path is a directory, not a file: %s", filePath)
