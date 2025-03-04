@@ -95,7 +95,7 @@ func moveFile(src, dst string) error {
 
 	err := ioCopyFileWithBuffer(src, dst, 8*1024*1024)
 	if err != nil {
-		fmt.Println(err)
+		klog.Info(err)
 		return err
 	}
 
@@ -211,11 +211,11 @@ func GetTempFilePathById4(id string, uploadsDir string) string {
 
 func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool, offset int64) (int64, error) {
 	startTime := time.Now()
-	fmt.Printf("--- Function SaveFile4 started at: %s\n", startTime)
+	klog.Infof("--- Function SaveFile4 started at: %s\n", startTime)
 
 	defer func() {
 		endTime := time.Now()
-		fmt.Printf("--- Function SaveFile4 ended at: %s\n", endTime)
+		klog.Infof("--- Function SaveFile4 ended at: %s\n", endTime)
 	}()
 
 	// Open source file
@@ -494,7 +494,7 @@ func AddVersionSuffix(source string) string {
 		} else if os.IsNotExist(err) {
 			break
 		} else {
-			fmt.Println("Error checking file:", err)
+			klog.Errorf("Error checking file:%v", err)
 			break
 		}
 	}
