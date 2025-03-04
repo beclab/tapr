@@ -37,7 +37,8 @@ type Server struct {
 func (server *Server) Init() error {
 	server.getEnvAppInfo()
 	server.app = fiber.New(fiber.Config{
-		BodyLimit: math.MaxInt, // this is the default limit of 10MB
+		BodyLimit:         math.MaxInt, // this is the default limit of 10MB
+		StreamRequestBody: true,
 	})
 	// middleware to allow all clients to communicate using http and allow cors
 	server.app.Use(cors.New(cors.Config{
