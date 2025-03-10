@@ -11,7 +11,7 @@ RUN \
 
 COPY / ./
 
-RUN go build -ldflags="-s -w" -o secret-vault cmd/vault/main.go
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o secret-vault cmd/vault/main.go
 
 
 # To run js tools
