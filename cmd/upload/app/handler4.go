@@ -238,7 +238,7 @@ func (a *appController) UploadedBytes(c *fiber.Ctx) error {
 
 	fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(innerIdentifier, uploadsDir)
 	//fileExist, fileLen := a.server.fileInfoMgr.CheckTempFile4(tmpName, uploadsDir)
-	fmt.Println("***exist: ", exist, " , fileExist: ", fileExist, " , fileLen: ", fileLen)
+	klog.Info("***exist: ", exist, " , fileExist: ", fileExist, " , fileLen: ", fileLen)
 	if exist {
 		if fileExist {
 			if info.Offset != fileLen {
@@ -259,20 +259,20 @@ func (a *appController) UploadedBytes(c *fiber.Ctx) error {
 func checkMem() {
 	v, err := mem.VirtualMemory()
 	if err != nil {
-		fmt.Println("Error:", err)
+		klog.Errorf("Error: %v", err)
 		return
 	}
-	fmt.Printf("Total: %v, Used: %v, Free: %v\n", v.Total, v.Used, v.Free)
+	klog.Infof("Total: %v, Used: %v, Free: %v\n", v.Total, v.Used, v.Free)
 }
 
 func checkCpu() {
 	percentages, err := cpu.Percent(time.Second, false)
 	if err != nil {
-		fmt.Println("Error:", err)
+		klog.Errorf("Error: %v", err)
 		return
 	}
 	for _, percentage := range percentages {
-		fmt.Printf("CPU Usage: %.2f%%\n", percentage)
+		klog.Infof("CPU Usage: %.2f%%\n", percentage)
 	}
 }
 
@@ -298,7 +298,7 @@ func checkDiskSpace(filePath string, newContentSize int64) (bool, int64, int64, 
 	//err = syscall.Statfs("/", &rootStat)
 	//endTime := time.Now()
 	//duration := endTime.Sub(startTime)
-	//fmt.Printf("***root syscall.Statfs took %v\n", duration, "***")
+	//klog.Infof("***root syscall.Statfs took %v\n", duration, "***")
 	//if err != nil {
 	//	return false, 0, 0, 0, fmt.Errorf("failed to get root file system stats: %w", err)
 	//}
@@ -308,7 +308,7 @@ func checkDiskSpace(filePath string, newContentSize int64) (bool, int64, int64, 
 	//err = syscall.Statfs(filePath, &dataStat)
 	//endTime = time.Now()
 	//duration = endTime.Sub(startTime)
-	//fmt.Printf("***/data syscall.Statfs took %v\n", duration, "***")
+	//klog.Infof("***/data syscall.Statfs took %v\n", duration, "***")
 	//if err != nil {
 	//	return false, 0, 0, 0, fmt.Errorf("failed to get /data file system stats: %w", err)
 	//}
@@ -358,16 +358,16 @@ func formatBytes(bytes int64) string {
 
 func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	startTime := time.Now()
-	fmt.Printf("Function UploadChunks started at: %s\n", startTime)
+	klog.Infof("Function UploadChunks started at: %s\n", startTime)
 
 	defer func() {
 		endTime := time.Now()
-		fmt.Printf("Function UploadChunks ended at: %s\n", endTime)
+		klog.Infof("Function UploadChunks ended at: %s\n", endTime)
 	}()
 
-	fmt.Println("*********Checking Chunk-relative Mem and CPU***************")
-	checkMem()
-	checkCpu()
+	//klog.Infof("*********Checking Chunk-relative Mem and CPU***************")
+	//checkMem()
+	//checkCpu()
 
 	_, userPvc, cachePvc, uploadsDir, err := getPVC(c)
 	if err != nil {
@@ -455,7 +455,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	}
 
 	//if resumableInfo.ResumableChunkNumber == 1 {
-	//	fmt.Println("*********Checking Whole File Disk Space***************")
+	//	klog.Infof("*********Checking Whole File Disk Space***************")
 	//	spaceOk, needs, avails, reserved, err := checkDiskSpace(uploadsDir, resumableInfo.ResumableTotalSize)
 	//	if err != nil {
 	//		fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
@@ -468,7 +468,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	//	if spaceOk {
 	//		spaceMessage := fmt.Sprintf("Sufficient disk space available. This file requires: %s, while %s is already available (with an additional %s reserved for the system).",
 	//			needsStr, availsStr, reservedStr)
-	//		fmt.Println(spaceMessage)
+	//		klog.Infof(spaceMessage)
 	//	} else {
 	//		fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
 	//		errorMessage := fmt.Sprintf("Insufficient disk space available. This file requires: %s, but only %s is available (with an additional %s reserved for the system).",
@@ -651,28 +651,28 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	fileHeader := resumableInfo.File
 	size := fileHeader.Size
 
-	fmt.Println("*********Checking Chunk-relative Disk Space***************")
-	spaceOk, needs, avails, reserved, err := checkDiskSpace(uploadsDir, info.FileSize-info.Offset)
-	if err != nil {
-		//fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
-		fmt.Println("err: ", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(
-			models.NewResponse(1, "Disk space check error:", err))
-	}
-	needsStr := formatBytes(needs)
-	availsStr := formatBytes(avails)
-	reservedStr := formatBytes(reserved)
-	if spaceOk {
-		spaceMessage := fmt.Sprintf("Sufficient disk space available. This file still requires: %s, while %s is already available (with an additional %s reserved for the system).",
-			needsStr, availsStr, reservedStr)
-		fmt.Println(spaceMessage)
-	} else {
-		fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
-		errorMessage := fmt.Sprintf("Insufficient disk space available. This file still requires: %s, but only %s is available (with an additional %s reserved for the system).",
-			needsStr, availsStr, reservedStr)
-		return c.Status(fiber.StatusBadRequest).JSON(
-			models.NewResponse(1, errorMessage, nil))
-	}
+	//klog.Info("*********Checking Chunk-relative Disk Space***************")
+	//spaceOk, needs, avails, reserved, err := checkDiskSpace(uploadsDir, info.FileSize-info.Offset)
+	//if err != nil {
+	//	//fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
+	//	klog.Infof("err: ", err)
+	//	return c.Status(fiber.StatusInternalServerError).JSON(
+	//		models.NewResponse(1, "Disk space check error:", err))
+	//}
+	//needsStr := formatBytes(needs)
+	//availsStr := formatBytes(avails)
+	//reservedStr := formatBytes(reserved)
+	//if spaceOk {
+	//	spaceMessage := fmt.Sprintf("Sufficient disk space available. This file still requires: %s, while %s is already available (with an additional %s reserved for the system).",
+	//		needsStr, availsStr, reservedStr)
+	//	klog.Infof(spaceMessage)
+	//} else {
+	//	fileutils.RemoveTempFileAndInfoFile4(tmpName, uploadsDir)
+	//	errorMessage := fmt.Sprintf("Insufficient disk space available. This file still requires: %s, but only %s is available (with an additional %s reserved for the system).",
+	//		needsStr, availsStr, reservedStr)
+	//	return c.Status(fiber.StatusBadRequest).JSON(
+	//		models.NewResponse(1, errorMessage, nil))
+	//}
 
 	ranges := c.Get("Content-Range")
 	var offsetStart int64
@@ -688,7 +688,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	var newFile bool = false
 	if info.Offset != offsetStart && offsetStart == 0 {
-		fmt.Println("Retransfering innerIdentifier:", innerIdentifier, ", uploadsDir:", uploadsDir, ", info.Offset:", info.Offset)
+		klog.Info("Retransfering innerIdentifier:", innerIdentifier, ", uploadsDir:", uploadsDir, ", info.Offset:", info.Offset)
 		//fileutils.ClearTempFileContent(innerIdentifier, uploadsDir)
 		newFile = true
 		info.Offset = offsetStart
@@ -762,7 +762,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	// Check if the file has been written
 	// if info.Offset == info.FileSize {
-	fmt.Println("offsetStart:", offsetStart, ", offsetEnd:", offsetEnd, ", info.Offset:", info.Offset, ", info.FileSize:", info.FileSize)
+	klog.Info("offsetStart:", offsetStart, ", offsetEnd:", offsetEnd, ", info.Offset:", info.Offset, ", info.FileSize:", info.FileSize)
 	if offsetEnd == info.FileSize-1 {
 		// Move the file to the specified upload path
 		err = fileutils.MoveFileByInfo4(info, uploadsDir)
