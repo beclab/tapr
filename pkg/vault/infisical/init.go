@@ -17,7 +17,8 @@ import (
 
 var (
 	Owner              = ""
-	InfisicalNamespace = ""
+	Org                = ""
+	InfisicalNamespace = "os-system"
 	InfisicalDBUser    = "infisical"
 	InfisicalDBName    = "infisical"
 	InfisicalDBAddr    = ""
@@ -27,8 +28,8 @@ var (
 )
 
 func init() {
-	Owner = os.Getenv("OWNER")
-	InfisicalNamespace = fmt.Sprintf("user-space-%s", Owner)
+	// Owner = os.Getenv("OWNER")
+	// InfisicalNamespace = fmt.Sprintf("user-space-%s", Owner)
 	InfisicalDBUser = GetenvOrDefault("PG_USER", InfisicalDBUser)
 	InfisicalDBName = GetenvOrDefault("PG_DB", InfisicalDBName)
 	InfisicalDBAddr = os.Getenv("PG_ADDR")
@@ -46,13 +47,20 @@ func GetenvOrDefault(env string, d string) string {
 
 	return v
 }
-func InsertKsUserToPostgres(ctx context.Context, pg *PostgresClient, username, email, password string) error {
-	klog.Info("insert user: ", username, ", email: ", email, ", password: ", password)
 
-	err := pg.UpdateSuperAdmin(ctx)
+func InitSuperAdmin(ctx context.Context, pg *PostgresClient) error {
+	var err error
+	Org, err = pg.UpdateSuperAdmin(ctx)
 	if err != nil {
+		klog.Error("update super admin error, ", err)
 		return err
 	}
+
+	return nil
+}
+
+func InsertKsUserToPostgres(ctx context.Context, pg *PostgresClient, username, email, password string) error {
+	klog.Info("insert user: ", username, ", email: ", email, ", password: ", password)
 
 	publicKeyBytes, privateKeyBytes, err := box.GenerateKey(rand.Reader)
 	if err != nil {
@@ -107,7 +115,7 @@ func InsertKsUserToPostgres(ctx context.Context, pg *PostgresClient, username, e
 		EncryptionVersion:   1,
 	}
 
-	userid, err := pg.SaveUser(ctx, dbUser, dbUserEnc)
+	userid, err := pg.SaveUser(ctx, Org, dbUser, dbUserEnc)
 	if err != nil {
 		return err
 	}
@@ -176,4 +184,8 @@ func InsertKsUserToMongo(ctx context.Context, mongo *MongoClient, username, emai
 	klog.Info("init user id, ", userid)
 
 	return nil
+}
+
+func DeleteUserFromPostgres(ctx context.Context, pg *PostgresClient, userId string) error {
+	return pg.DeleteUser(ctx, userId)
 }

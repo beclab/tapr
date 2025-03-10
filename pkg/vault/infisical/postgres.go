@@ -176,18 +176,48 @@ func NewClient(dsn string) (*PostgresClient, error) {
 	return &PostgresClient{DB: &dbProxy}, nil
 }
 
-func (c *PostgresClient) UpdateSuperAdmin(basectx context.Context) error {
+func (c *PostgresClient) UpdateSuperAdmin(basectx context.Context) (orgId string, err error) {
 	ctx, cancel := context.WithTimeout(basectx, 10*time.Second)
 	defer cancel()
 
 	sql := "update super_admin set initialized = true"
-	_, err := c.DB.ExecContext(ctx, sql)
+	_, err = c.DB.ExecContext(ctx, sql)
 	if err != nil {
 		klog.Error("update super_admin error, ", err)
-		return err
+		return "", err
 	}
 
-	return nil
+	// create or get org id
+	sql = "select * from organizations where name = :name"
+	res, err := c.DB.NamedQueryContext(ctx, sql, map[string]interface{}{
+		"name": "Terminus",
+	})
+	if err != nil {
+		klog.Error("fetch org error,  ", err)
+
+		return "", err
+	}
+
+	var org OrganizationsPG
+	if res.Next() {
+		err = res.StructScan(&org)
+		if err != nil {
+			klog.Error("scan org data error, ", err)
+			return "", err
+		}
+		return *org.ID, nil
+	}
+
+	org = OrganizationsPG{
+		Name: "Terminus",
+	}
+
+	orgId, err = org.Create(basectx, c)
+	if err != nil {
+		klog.Error("create org error,  ", err)
+	}
+
+	return orgId, nil
 }
 
 func (c *PostgresClient) GetUser(basectx context.Context, email string) (*UserEncryptionKeysPG, error) {
@@ -270,7 +300,7 @@ func (c *PostgresClient) GetUserTokenSession(basectx context.Context, userId, ip
 	return &session, nil
 }
 
-func (c *PostgresClient) SaveUser(basectx context.Context, user *UserPG, userEnc *UserEncryptionKeysPG) (string, error) {
+func (c *PostgresClient) SaveUser(basectx context.Context, orgId string, user *UserPG, userEnc *UserEncryptionKeysPG) (string, error) {
 	if user == nil {
 		return "", errors.New("user is empty")
 	}
@@ -288,15 +318,6 @@ func (c *PostgresClient) SaveUser(basectx context.Context, user *UserPG, userEnc
 		}
 	}
 
-	org := OrganizationsPG{
-		Name: "Terminus",
-	}
-
-	orgId, err := org.Create(basectx, c)
-	if err != nil {
-		return "", err
-	}
-
 	member := OrgMembershipsPG{
 		OrgId:  orgId,
 		UserId: uid,
@@ -310,6 +331,26 @@ func (c *PostgresClient) SaveUser(basectx context.Context, user *UserPG, userEnc
 	}
 
 	return uid, nil
+}
+
+func (c *PostgresClient) DeleteUser(basectx context.Context, userId string) error {
+	err := delete(basectx, c, "user", fmt.Sprintf("id = %s", userId))
+	if err != nil {
+		klog.Error("delete user error, ", err)
+		return err
+	}
+
+	err = delete(basectx, c, "user_encryption_keys", fmt.Sprintf("userId = %s", userId))
+	if err != nil {
+		klog.Error("delete user encryption keys error, ", err)
+	}
+
+	err = delete(basectx, c, "org_memberships", fmt.Sprintf("userId = %s", userId))
+	if err != nil {
+		klog.Error("delete org memberships error, ", err)
+	}
+
+	return nil
 }
 
 func ValueMapper[T interface{}](obj T) (fields, namedKeys []string, err error) {
@@ -353,6 +394,22 @@ func insert[T interface{}](basectx context.Context, client *PostgresClient, tabl
 	return
 
 }
+
+func delete(basectx context.Context, client *PostgresClient, table string, whereClause string) error {
+	sql := fmt.Sprintf("delete from %s %s", table, whereClause)
+
+	ctx, cancel := context.WithTimeout(basectx, 10*time.Second)
+	defer cancel()
+
+	_, err := client.DB.ExecContext(ctx, sql)
+	if err != nil {
+		klog.Error("delete error, ", err, ", ", table)
+		return err
+	}
+
+	return nil
+}
+
 func (u *UserPG) Create(basectx context.Context, client *PostgresClient) (id string, err error) {
 	return insert(basectx, client, "users", u, func(obj *UserPG, id string) *UserPG {
 		obj.ID = &id

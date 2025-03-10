@@ -76,9 +76,39 @@ func RequireAdmin(kubeconfig *rest.Config, next func(c *fiber.Ctx) error) func(c
 	}
 }
 
-func GetOwnerInfo(kubeconfig *rest.Config, owner string, next func(c *fiber.Ctx) error) func(c *fiber.Ctx) error {
+// func GetOwnerInfo(kubeconfig *rest.Config, owner string, next func(c *fiber.Ctx) error) func(c *fiber.Ctx) error {
+// 	return func(c *fiber.Ctx) error {
+// 		user, err := kubesphere.GetUser(c.UserContext(), kubeconfig, owner)
+// 		if err != nil {
+// 			return c.JSON(fiber.Map{
+// 				"code":    http.StatusUnauthorized,
+// 				"message": fmt.Sprintf("User info error, %s", err.Error()),
+// 				"data":    nil,
+// 			})
+// 		}
+
+// 		c.Context().SetUserValueBytes(constants.UsernameCtxKey, owner)
+// 		c.Context().SetUserValueBytes(constants.UserEmailCtxKey, user.Spec.Email)
+
+// 		// FIXME:
+// 		// c.Context().SetUserValueBytes(constants.UserPwdCtxKey, user.Spec.EncryptedPassword)
+// 		c.Context().SetUserValueBytes(constants.UserPwdCtxKey, infisical.Password)
+// 		return next(c)
+// 	}
+// }
+
+func GetUserInfo(kubeconfig *rest.Config, next func(c *fiber.Ctx) error) func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
-		user, err := kubesphere.GetUser(c.UserContext(), kubeconfig, owner)
+		userName := c.Get(constants.WsHeaderBflUser, "")
+		if userName == "" {
+			return c.JSON(fiber.Map{
+				"code":    http.StatusUnauthorized,
+				"message": fmt.Sprintf("User name not found in header"),
+				"data":    nil,
+			})
+		}
+
+		user, err := kubesphere.GetUser(c.UserContext(), kubeconfig, userName)
 		if err != nil {
 			return c.JSON(fiber.Map{
 				"code":    http.StatusUnauthorized,
@@ -87,7 +117,7 @@ func GetOwnerInfo(kubeconfig *rest.Config, owner string, next func(c *fiber.Ctx)
 			})
 		}
 
-		c.Context().SetUserValueBytes(constants.UsernameCtxKey, owner)
+		c.Context().SetUserValueBytes(constants.UsernameCtxKey, userName)
 		c.Context().SetUserValueBytes(constants.UserEmailCtxKey, user.Spec.Email)
 
 		// FIXME:

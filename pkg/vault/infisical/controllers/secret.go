@@ -39,7 +39,7 @@ func (s *secretController) CreateSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	workspaceName, ok := op.Params["workspace"]
+	reqWorkspaceName, ok := op.Params["workspace"]
 	if !ok {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
@@ -50,8 +50,10 @@ func (s *secretController) CreateSecret(c *fiber.Ctx) error {
 	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.UserEncryptionKeysPG)
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)
+	userName := c.Context().UserValueBytes([]byte(constants.UsernameCtxKey)).(string)
 
-	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, workspaceName)
+	userWorkspace := UserWorkspaceName(reqWorkspaceName, userName)
+	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, userWorkspace)
 	if err != nil {
 		if !s.Clientset().IsNotFound(err) {
 			return c.JSON(fiber.Map{
@@ -60,7 +62,7 @@ func (s *secretController) CreateSecret(c *fiber.Ctx) error {
 			})
 		}
 
-		workspaceId, err = s.Clientset().CreateWorkspace(user, token.(string), orgId, workspaceName, userPrivateKey)
+		workspaceId, err = s.Clientset().CreateWorkspace(user, token.(string), orgId, userWorkspace, userPrivateKey)
 		if err != nil {
 			return c.JSON(fiber.Map{
 				"code":    http.StatusInternalServerError,
@@ -113,7 +115,7 @@ func (s *secretController) RetrieveSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	workspaceName, ok := op.Params["workspace"]
+	reqWorkspaceName, ok := op.Params["workspace"]
 	if !ok {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
@@ -123,8 +125,11 @@ func (s *secretController) RetrieveSecret(c *fiber.Ctx) error {
 
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)
+	userName := c.Context().UserValueBytes([]byte(constants.UsernameCtxKey)).(string)
 
-	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, workspaceName)
+	userWorkspace := UserWorkspaceName(reqWorkspaceName, userName)
+
+	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, userWorkspace)
 	if err != nil {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusInternalServerError,
@@ -181,7 +186,7 @@ func (s *secretController) ListSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	workspaceName, ok := op.Params["workspace"]
+	reqWorkspaceName, ok := op.Params["workspace"]
 	if !ok {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
@@ -191,8 +196,11 @@ func (s *secretController) ListSecret(c *fiber.Ctx) error {
 
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)
+	userName := c.Context().UserValueBytes([]byte(constants.UsernameCtxKey)).(string)
 
-	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, workspaceName)
+	userWorkspace := UserWorkspaceName(reqWorkspaceName, userName)
+
+	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, userWorkspace)
 	if err != nil {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusInternalServerError,
@@ -255,7 +263,7 @@ func (s *secretController) DeleteSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	workspaceName, ok := op.Params["workspace"]
+	reqWorkspaceName, ok := op.Params["workspace"]
 	if !ok {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
@@ -265,8 +273,11 @@ func (s *secretController) DeleteSecret(c *fiber.Ctx) error {
 
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)
+	userName := c.Context().UserValueBytes([]byte(constants.UsernameCtxKey)).(string)
 
-	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, workspaceName)
+	userWorkspace := UserWorkspaceName(reqWorkspaceName, userName)
+
+	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, userWorkspace)
 	if err != nil {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusInternalServerError,
@@ -320,7 +331,7 @@ func (s *secretController) UpdateSecret(c *fiber.Ctx) error {
 		})
 	}
 
-	workspaceName, ok := op.Params["workspace"]
+	reqWorkspaceName, ok := op.Params["workspace"]
 	if !ok {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
@@ -331,8 +342,11 @@ func (s *secretController) UpdateSecret(c *fiber.Ctx) error {
 	user := c.Context().UserValueBytes(constants.UserCtxKey).(*infisical.UserEncryptionKeysPG)
 	orgId := c.Context().UserValueBytes([]byte(constants.UserOrganizationIdCtxKey)).(string)
 	userPrivateKey := c.Context().UserValueBytes([]byte(constants.UserPrivateKeyCtxKey)).(string)
+	userName := c.Context().UserValueBytes([]byte(constants.UsernameCtxKey)).(string)
 
-	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, workspaceName)
+	userWorkspace := UserWorkspaceName(reqWorkspaceName, userName)
+
+	workspaceId, err := s.Clientset().GetWorkspace(token.(string), orgId, userWorkspace)
 	if err != nil {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusInternalServerError,
