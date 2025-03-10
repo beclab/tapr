@@ -9,6 +9,7 @@ type controllers struct {
 	secretController
 	authController
 	adminController
+	userController
 }
 
 func New() *controllers {
@@ -20,11 +21,13 @@ func (c *controllers) WithClientset(cs *Clientset) *controllers {
 	c.secretController.Clientset = f
 	c.workspaceController.Clientset = f
 	c.adminController.Clientset = f
+	c.userController.Clientset = f
 	return c
 }
 
 func (c *controllers) WithDynamicClient(client *dynamic.DynamicClient) *controllers {
 	c.adminController.DynamicClient = func() *dynamic.DynamicClient { return client }
+	c.userController.DynamicClient = func() *dynamic.DynamicClient { return client }
 
 	return c
 }

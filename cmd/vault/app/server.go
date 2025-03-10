@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"bytetrade.io/web3os/tapr/pkg/app/middleware"
-	"bytetrade.io/web3os/tapr/pkg/kubesphere"
 	"bytetrade.io/web3os/tapr/pkg/vault/infisical"
 	"bytetrade.io/web3os/tapr/pkg/vault/infisical/controllers"
 	"github.com/gofiber/fiber/v2"
@@ -47,22 +46,10 @@ func (s *Server) Init() error {
 	defer client.Close()
 
 	// init user
-	user, err := kubesphere.GetUser(ctx, s.KubeConfig, infisical.Owner)
+	err = infisical.InitSuperAdmin(ctx, client)
 	if err != nil {
+		klog.Error("init user error, ", err)
 		return err
-	}
-
-	u, err := client.GetUser(ctx, user.Spec.Email)
-	if err != nil {
-		return err
-	}
-
-	if u == nil {
-		err = infisical.InsertKsUserToPostgres(ctx, client, infisical.Owner, user.Spec.Email, infisical.Password)
-		if err != nil {
-			klog.Error("init user error, ", err)
-			return err
-		}
 	}
 
 	return nil
@@ -86,44 +73,44 @@ func (s *Server) ServerRun() {
 	tokenIssuer := infisical.NewTokenIssuer(s.KubeConfig).WithUserAndPwd(s.getPostgresUserAndPwd)
 	// tapr auth token for infisical
 	app.Post("/tapr/auth/token",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(routes.AuthToken)))
 
 	app.Post("/tapr/privatekey",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(routes.PrivateKey)))
 
 	// put secret in workspace
 	app.Post("/secret/create",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.CreateSecret)))))
 
 	// delete secret in workspace
 	app.Post("/secret/delete",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.DeleteSecret)))))
 
 	// update secret in workspace
 	app.Post("/secret/update",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.UpdateSecret)))))
 
 	// get secret in workspace
 	app.Post("/secret/retrieve",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.RetrieveSecret)))))
 
 	// list secrets in workspace
 	app.Post("/secret/list",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.ListSecret)))))
@@ -131,38 +118,49 @@ func (s *Server) ServerRun() {
 	// api for settings
 	// check app secrets permission
 	app.Get("/admin/permission/:appid",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.CheckAppSecretPerm)))))
 
 	// list app secrets
 	app.Get("/admin/secret/:appid",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.ListAppSecret)))))
 
 	// create app secrets
 	app.Post("/admin/secret/:appid",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.CreateAppSecret)))))
 
 	// delete app secrets
 	app.Delete("/admin/secret/:appid",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.DeleteAppSecret)))))
 
 	// update app secrets
 	app.Put("/admin/secret/:appid",
-		middleware.GetOwnerInfo(s.KubeConfig, infisical.Owner,
+		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.UpdateAppSecret)))))
+
+	// user callback
+	app.Post("/user/create", func(ctx *fiber.Ctx) error {
+		return routes.CreateUser(s.getPostgresUserAndPwd, ctx)
+	})
+
+	app.Post("/user/delete", middleware.GetUserInfo(s.KubeConfig,
+		tokenIssuer.IssueInfisicalToken(func(ctx *fiber.Ctx) error {
+			return routes.DeleteUser(s.getPostgresUserAndPwd, ctx)
+		}),
+	))
 
 	klog.Info("secret-vault http server listening on 8080 ")
 	klog.Fatal(app.Listen(":8080"))
@@ -188,12 +186,12 @@ func (s *Server) getMongoUserAndPwd(ctx context.Context) (user string, pwd strin
 	user = infisical.InfisicalDBUser
 	pwd, err = s.getSecretPwd(ctx, "infisical-mongodb", "mongodb-passwords")
 
-	return user, pwd, nil
+	return user, pwd, err
 }
 
 func (s *Server) getPostgresUserAndPwd(ctx context.Context) (user string, pwd string, err error) {
 	user = infisical.InfisicalDBUser
 	pwd, err = s.getSecretPwd(ctx, "infisical-postgres", "postgres-passwords")
 
-	return user, pwd, nil
+	return user, pwd, err
 }

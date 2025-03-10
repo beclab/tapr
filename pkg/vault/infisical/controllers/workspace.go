@@ -127,6 +127,29 @@ func (w *workspaceClient) ListWorkspace(token, orgId string) ([]string, error) {
 	return ret, nil
 }
 
+func (w *workspaceClient) DeleteWorkspace(token, workspaceId string) error {
+	url := infisical.InfisicalAddr + "/api/v1/workspace/" + workspaceId
+
+	client := NewHttpClient()
+	resp, err := client.R().
+		SetHeader("Authorization", "Bearer "+token).
+		SetResult(&Workspaces{}).
+		Delete(url)
+
+	if err != nil {
+		klog.Error("delete user workspace error, ", err)
+		return err
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		klog.Error("delete user workspace error, ", string(resp.Body()))
+		return errors.New(string(resp.Body()))
+	}
+
+	return nil
+
+}
+
 func (w *workspaceClient) IsNotFound(err error) bool {
 	return strings.HasPrefix(err.Error(), "not found")
 }
@@ -199,4 +222,10 @@ func (w *workspaceClient) GetWorkspaceKey(token, workspaceId, privateKey string)
 	}
 
 	return plainKey, nil
+}
+
+// infisical shares the workspace with user in the same organization
+// so we need to generate a unique workspace name for each user
+func UserWorkspaceName(workflowName, user string) string {
+	return fmt.Sprintf("%s-%s", workflowName, user)
 }

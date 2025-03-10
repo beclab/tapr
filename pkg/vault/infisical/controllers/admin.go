@@ -370,18 +370,19 @@ func (a *adminController) getAppSecretWorkspaces(ctx context.Context,
 						// assume one workspace per app
 						op := DecodeOps(pr.Ops[0])
 						if workspaceName, ok := op.Params["workspace"]; ok {
+							userWorkspace := UserWorkspaceName(workspaceName, username)
 							w := &struct {
 								workspaceName string
 								workspaceId   string
 								projectKey    string
 							}{
-								workspaceName,
+								userWorkspace,
 								"",
 								"",
 							}
 
 							workspaces = append(workspaces, w)
-							workspaceId, err := a.Clientset().GetWorkspace(token, orgId, workspaceName)
+							workspaceId, err := a.Clientset().GetWorkspace(token, orgId, userWorkspace)
 							if err != nil {
 								if !a.Clientset().IsNotFound(err) {
 									return nil, err
