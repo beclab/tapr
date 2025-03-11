@@ -70,6 +70,7 @@ func (client *Client) onConnection() {
 			klog.Infof("read message, type: %d, connId: %s, user: %s, data: %s", mt, connId, userName, string(msg))
 
 			if client.checkPingMessage(msg) {
+				client.writeHandler(connId, websocket.TextMessage, map[string]interface{}{"event": "pong"})
 				client.updateExpiration()
 				continue
 			}
