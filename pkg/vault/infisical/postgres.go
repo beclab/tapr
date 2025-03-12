@@ -100,12 +100,14 @@ type UserEncryptionKeysPG struct {
 	});
 */
 type OrganizationsPG struct {
-	ID           *string `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
-	Name         string  `db:"name" json:"name" mapstructure:"name"`
-	CustomerId   string  `db:"customerId" json:"customerId" mapstructure:"customerId"`
-	Slug         string  `db:"slug" json:"slug" mapstructure:"slug"`
-	AuthEnforced bool    `db:"authEnforced" json:"authEnforced" mapstructure:"authEnforced"`
-	ScimEnabled  bool    `db:"scimEnabled" json:"scimEnabled" mapstructure:"scimEnabled"`
+	ID           *string    `db:"id,omitempty" json:"id,omitempty" mapstructure:"id,omitempty"`
+	Name         string     `db:"name" json:"name" mapstructure:"name"`
+	CustomerId   string     `db:"customerId" json:"customerId" mapstructure:"customerId"`
+	Slug         string     `db:"slug" json:"slug" mapstructure:"slug"`
+	AuthEnforced bool       `db:"authEnforced" json:"authEnforced" mapstructure:"authEnforced"`
+	ScimEnabled  bool       `db:"scimEnabled" json:"scimEnabled" mapstructure:"scimEnabled"`
+	CreatedAt    *time.Time `db:"createdAt,omitempty" json:"createdAt,omitempty" mapstructure:"createdAt,omitempty"`
+	UpdatedAt    *time.Time `db:"updatedAt,omitempty" json:"updatedAt,omitempty" mapstructure:"updatedAt,omitempty"`
 }
 
 /*
