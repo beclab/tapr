@@ -6,15 +6,16 @@ import (
 	"bytetrade.io/web3os/tapr/pkg/upload/fileutils"
 
 	"context"
+	"math"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
-	"math"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -37,8 +38,9 @@ type Server struct {
 func (server *Server) Init() error {
 	server.getEnvAppInfo()
 	server.app = fiber.New(fiber.Config{
-		BodyLimit:         math.MaxInt, // this is the default limit of 10MB
-		StreamRequestBody: true,
+		BodyLimit:                    math.MaxInt, // this is the default limit of 10MB
+		StreamRequestBody:            true,
+		DisablePreParseMultipartForm: true,
 	})
 	// middleware to allow all clients to communicate using http and allow cors
 	server.app.Use(cors.New(cors.Config{
