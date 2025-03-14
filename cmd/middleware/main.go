@@ -9,7 +9,6 @@ import (
 	_ "net/http/pprof"
 
 	"bytetrade.io/web3os/tapr/cmd/middleware/app"
-	"bytetrade.io/web3os/tapr/cmd/middleware/operator/backup"
 	kvrocksbakcup "bytetrade.io/web3os/tapr/cmd/middleware/operator/kvrocks-bakcup"
 	kvrocksrestore "bytetrade.io/web3os/tapr/cmd/middleware/operator/kvrocks-restore"
 	middlewarerequest "bytetrade.io/web3os/tapr/cmd/middleware/operator/middleware-request"
@@ -52,7 +51,7 @@ func main() {
 	kvrocksBackupController := kvrocksbakcup.NewController(config, apiCtx)
 	kvrocksRestoreController := kvrocksrestore.NewController(config, apiCtx)
 
-	backupWatcher := backup.NewWatcher(config, apiCtx)
+	// backupWatcher := backup.NewWatcher(config, apiCtx)
 
 	runControllers := func() {
 		go func() { utilruntime.Must(pgclusterController.Run(1)) }()
@@ -63,7 +62,7 @@ func main() {
 		go func() { utilruntime.Must(kvrocksBackupController.Run(1)) }()
 		go func() { utilruntime.Must(kvrocksRestoreController.Run(1)) }()
 		go func() { utilruntime.Must(configMapController.Run(1)) }()
-		go func() { backupWatcher.Start() }()
+		// go func() { backupWatcher.Start() }()
 	}
 
 	cmd := &cobra.Command{
