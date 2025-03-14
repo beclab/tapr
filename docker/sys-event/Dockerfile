@@ -1,13 +1,13 @@
 
 
 # Build the manager binary
-FROM golang:1.18 as builder
+FROM golang:1.23.5 as builder
 
 WORKDIR /workspace
 COPY go.mod go.sum ./
 RUN \
-	echo ">> Downloading go modules..." && \
-	go mod download
+  echo ">> Downloading go modules..." && \
+  go mod download
 
 COPY / ./
 
