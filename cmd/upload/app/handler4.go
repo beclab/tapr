@@ -363,7 +363,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	defer func() {
 		endTime := time.Now()
-		klog.Infof("Function UploadChunks ended at: %s, took: %s\n", endTime, time.Since(startTime)/time.Millisecond)
+		klog.Infof("Function UploadChunks ended at: %s, took: %s\n", endTime, time.Since(startTime))
 	}()
 
 	//klog.Infof("*********Checking Chunk-relative Mem and CPU***************")
