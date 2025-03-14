@@ -1,20 +1,21 @@
 package app
 
 import (
-	"bytetrade.io/web3os/tapr/pkg/upload/fileutils"
-	"bytetrade.io/web3os/tapr/pkg/upload/models"
-	"bytetrade.io/web3os/tapr/pkg/upload/uid"
-	"bytetrade.io/web3os/tapr/pkg/utils"
 	"fmt"
-	"github.com/gofiber/fiber/v2"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/mem"
-	"k8s.io/klog/v2"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"bytetrade.io/web3os/tapr/pkg/upload/fileutils"
+	"bytetrade.io/web3os/tapr/pkg/upload/models"
+	"bytetrade.io/web3os/tapr/pkg/upload/uid"
+	"bytetrade.io/web3os/tapr/pkg/utils"
+	"github.com/gofiber/fiber/v2"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -362,7 +363,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 	defer func() {
 		endTime := time.Now()
-		klog.Infof("Function UploadChunks ended at: %s\n", endTime)
+		klog.Infof("Function UploadChunks ended at: %s, took: %s\n", endTime, time.Since(startTime)/time.Millisecond)
 	}()
 
 	//klog.Infof("*********Checking Chunk-relative Mem and CPU***************")
