@@ -209,6 +209,38 @@ func GetTempFilePathById4(id string, uploadsDir string) string {
 	return filepath.Join(uploadsDir, id)
 }
 
+func CalculateMD5(fileHeader *multipart.FileHeader) (string, error) {
+	start := time.Now()
+	klog.Infoln("Function CalculateMD5 starts at", start)
+	defer func() {
+		elapsed := time.Since(start)
+		klog.Infof("Function CalculateMD5 execution time: %v\n", elapsed)
+	}()
+
+	// Open the file
+	file, err := fileHeader.Open()
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	// Create an MD5 hash object
+	hash := md5.New()
+
+	// Copy the file content to the hash object
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	// Compute the hash and get the checksum
+	hashInBytes := hash.Sum(nil)[:16]
+
+	// Convert the byte array to a hexadecimal string
+	md5String := hex.EncodeToString(hashInBytes)
+
+	return md5String, nil
+}
+
 func SaveFile4(fileHeader *multipart.FileHeader, filePath string, newFile bool, offset int64) (int64, error) {
 	startTime := time.Now()
 	klog.Infof("--- Function SaveFile4 started at: %s\n", startTime)

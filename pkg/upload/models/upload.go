@@ -51,5 +51,6 @@ type ResumableInfo struct {
 	ResumableRelativePath     string                `json:"resumableRelativePath" form:"resumableRelativePath"`
 	ResumableTotalChunks      int                   `json:"resumableTotalChunks" form:"resumableTotalChunks"`
 	ParentDir                 string                `json:"parent_dir" form:"parent_dir"`
+	MD5                       string                `json:"md5,omitempty" form:"md5"`
 	File                      *multipart.FileHeader `json:"file" form:"file" binding:"required"`
 }
