@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -32,6 +33,112 @@ func MoveFile(src, dst string) error {
 	}
 
 	return moveFile(src, dst)
+}
+
+func Chown(path string, uid, gid int) error {
+	start := time.Now()
+	klog.Infoln("Function Chown starts at", start)
+	defer func() {
+		elapsed := time.Since(start)
+		klog.Infof("Function Chown execution time: %v\n", elapsed)
+	}()
+
+	var err error = nil
+	err = os.Chown(path, uid, gid)
+
+	if err != nil {
+		klog.Errorf("can't chown directory %s to user %d: %s", path, uid, err)
+	}
+	return err
+}
+
+func createAndChownDir(path string, mode os.FileMode, uid, gid int) error {
+	if err := os.Mkdir(path, mode); err != nil {
+		return err
+	}
+	return Chown(path, uid, gid)
+}
+
+func MkdirAllWithChown(path string, mode os.FileMode) error {
+	klog.Infoln("~~~Temp log: path: ", path)
+	if path == "" {
+		return nil
+	}
+
+	var info os.FileInfo
+	var err error
+	var uid int
+	var subErr error
+
+	parts := strings.Split(path, "/")
+	vol := ""
+	found := false
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		vol = filepath.Join(vol, part)
+
+		info, err = os.Stat(vol)
+		klog.Infoln("~~~Temp log: vol: ", vol)
+
+		if err == nil {
+			if !info.IsDir() {
+				return fmt.Errorf("path %s is not a directory", vol)
+			}
+			continue
+		}
+
+		if os.IsNotExist(err) {
+			if !found {
+				if filepath.Dir(vol) == "/" {
+					uid = 1000
+				} else {
+					uid, subErr = GetUID(filepath.Dir(vol))
+					klog.Infoln("~~~Temp log: uid ", uid, " filepath ", filepath.Dir(vol))
+					if subErr != nil {
+						return subErr
+					}
+				}
+				found = true
+			}
+			klog.Infoln("~~~Temp log: path %s does not exist", vol, ", will create with uid: ", uid, " and mode: ", mode)
+
+			if subErr = createAndChownDir(vol, mode, uid, uid); subErr != nil {
+				return subErr
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetUID(path string) (int, error) {
+	if path == "/" {
+		return 1000, nil
+	}
+
+	start := time.Now()
+	klog.Infoln("Function GetUID starts at", start)
+	defer func() {
+		elapsed := time.Since(start)
+		klog.Infof("Function GetUID execution time: %v\n", elapsed)
+	}()
+
+	var fileInfo os.FileInfo
+	var err error
+	if fileInfo, err = os.Stat(path); err != nil {
+		return 0, err
+	}
+
+	statT, ok := fileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, fmt.Errorf("unable to convert Sys() type to *syscall.Stat_t")
+	}
+
+	return int(statT.Uid), nil
 }
 
 func ioCopyFileWithBuffer(sourcePath, targetPath string, bufferSize int) error {
@@ -68,6 +175,14 @@ func ioCopyFileWithBuffer(sourcePath, targetPath string, bufferSize int) error {
 	}
 
 	if err := targetFile.Sync(); err != nil {
+		return err
+	}
+
+	uid, err := GetUID(dir)
+	if err != nil {
+		return err
+	}
+	if err = Chown(tempFilePath, uid, uid); err != nil {
 		return err
 	}
 	return os.Rename(tempFilePath, targetPath)

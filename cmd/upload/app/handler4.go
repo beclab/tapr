@@ -110,11 +110,16 @@ func (a *appController) UploadLink(c *fiber.Ctx) error {
 	klog.Infof("c:%+v", c)
 
 	if !utils.CheckDirExist(path) {
-		if err := os.MkdirAll(path, os.ModePerm); err != nil {
-			klog.Warning("err:", err)
+		if err = fileutils.MkdirAllWithChown(path, os.ModePerm); err != nil {
+			klog.Error("err:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
 				models.NewResponse(1, "failed to create folder", nil))
 		}
+		//if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		//	klog.Warning("err:", err)
+		//	return c.Status(fiber.StatusInternalServerError).JSON(
+		//		models.NewResponse(1, "failed to create folder", nil))
+		//}
 	}
 
 	uploadID := uid.MakeUid(path)
@@ -499,11 +504,16 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		dirPath := filepath.Dir(fullPath)
 
 		if !utils.CheckDirExist(dirPath) {
-			if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
-				klog.Warning("err:", err)
+			if err = fileutils.MkdirAllWithChown(dirPath, os.ModePerm); err != nil {
+				klog.Error("err:", err)
 				return c.Status(fiber.StatusInternalServerError).JSON(
 					models.NewResponse(1, "failed to create folder", nil))
 			}
+			//if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+			//	klog.Warning("err:", err)
+			//	return c.Status(fiber.StatusInternalServerError).JSON(
+			//		models.NewResponse(1, "failed to create folder", nil))
+			//}
 		}
 
 		if resumableInfo.ResumableRelativePath == "" {
