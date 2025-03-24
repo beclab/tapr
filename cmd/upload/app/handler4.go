@@ -788,7 +788,13 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 	klog.Info("offsetStart:", offsetStart, ", offsetEnd:", offsetEnd, ", info.Offset:", info.Offset, ", info.FileSize:", info.FileSize)
 	if offsetEnd == info.FileSize-1 {
 		// Move the file to the specified upload path
+		klog.Infof("~~~Temp log: wait 10s before move file starts")
+		time.Sleep(10 * time.Second)
+		klog.Infof("~~~Temp log: wait 10s before move file end")
 		err = fileutils.MoveFileByInfo4(info, uploadsDir)
+		klog.Infof("~~~Temp log: wait 10s after move file starts")
+		time.Sleep(10 * time.Second)
+		klog.Infof("~~~Temp log: wait 10s after move file end")
 		//err = fileutils.RenameFileByInfo4(info, uploadsDir)
 		if err != nil {
 			klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
