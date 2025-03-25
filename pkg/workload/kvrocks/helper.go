@@ -657,7 +657,11 @@ func (cli *kvrClient) Namespace(ctx context.Context, arg ...interface{}) *redis.
 }
 
 func (cli *kvrClient) AddNamespace(ctx context.Context, namespace, token string) error {
-	return cli.Namespace(ctx, "add", namespace, token).Err()
+	if err := cli.Namespace(ctx, "add", namespace, token).Err(); err != nil {
+		return err
+	}
+
+	return cli.ConfigRewrite(ctx).Err()
 }
 
 func (cli *kvrClient) GetNamespace(ctx context.Context, namespace string) (*Namespace, error) {
@@ -698,9 +702,18 @@ func (cli *kvrClient) ListNamespace(ctx context.Context) ([]*Namespace, error) {
 }
 
 func (cli *kvrClient) UpdateNamespace(ctx context.Context, namespace, token string) error {
-	return cli.Namespace(ctx, "set", namespace, token).Err()
+	if err := cli.Namespace(ctx, "set", namespace, token).Err(); err != nil {
+		return err
+	}
+
+	return cli.ConfigRewrite(ctx).Err()
+
 }
 
 func (cli *kvrClient) DeleteNamespace(ctx context.Context, namespace string) error {
-	return cli.Namespace(ctx, "del", namespace).Err()
+	if err := cli.Namespace(ctx, "del", namespace).Err(); err != nil {
+		return err
+	}
+
+	return cli.ConfigRewrite(ctx).Err()
 }
