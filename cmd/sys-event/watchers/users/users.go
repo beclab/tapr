@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
@@ -37,6 +38,8 @@ type watcher struct {
 const InvokeRetry = 10
 
 const UserTerminusWizardStatus = "bytetrade.io/wizard-status"
+const UserAnnotationZoneKey = "bytetrade.io/zone"
+const UserAnnotationLocalDomainIp = "bytetrade.io/local-domain-ip"
 
 type WizardStatus string
 
@@ -48,13 +51,14 @@ var schemeGroupVersionResource = schema.GroupVersionResource{Group: "iam.kubesph
 
 func NewWatcher(ctx context.Context, kubeconfig *rest.Config,
 	w *watchers.Watchers, n *watchers.Notification) *watcher {
+	kubeClient := kubernetes.NewForConfigOrDie(kubeconfig)
 	return &watcher{
 		ctx:           ctx,
 		dynamicClient: dynamic.NewForConfigOrDie(kubeconfig),
 		aprClient:     aprclientset.NewForConfigOrDie(kubeconfig),
 		cacheEvent:    make(map[string]map[string]runtime.Object),
 		eventWatchers: w,
-		subscriber:    &Subscriber{notification: n},
+		subscriber:    &Subscriber{tasks: []task{&Notify{notification: n}, &UserDomain{client: kubeClient}}},
 		activingUsers: make(map[string]string),
 	}
 }
@@ -144,6 +148,12 @@ func (w *watcher) Start() {
 						klog.Info("invoke user create callback succeed, ", user.Name)
 
 					case watch.Deleted:
+						w.eventWatchers.Enqueue(watchers.EnqueueObj{
+							Obj:       &user,
+							Action:    watchers.DELETE,
+							Subscribe: w.subscriber,
+						})
+
 						if err := w.invokeUserDeletedCB(nil, &user); err != nil {
 							klog.Error("invoke user delete callback error, ", err, user.Name)
 							continue
@@ -151,12 +161,13 @@ func (w *watcher) Start() {
 
 						klog.Info("invoke user delete callback succeed, ", user.Name)
 
+					case watch.Modified:
 						w.eventWatchers.Enqueue(watchers.EnqueueObj{
 							Obj:       &user,
-							Action:    watchers.DELETE,
+							Action:    watchers.UPDATE,
 							Subscribe: w.subscriber,
 						})
-					case watch.Modified:
+
 						if status, ok := user.Annotations[UserTerminusWizardStatus]; ok {
 							switch status {
 							case string(Completed):

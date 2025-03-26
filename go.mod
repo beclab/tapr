@@ -5,6 +5,7 @@ go 1.22
 toolchain go1.23.3
 
 require (
+	github.com/coredns/corefile-migration/migration v1.0.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/emicklei/go-restful v2.16.0+incompatible
 	github.com/go-redis/redis/v8 v8.11.5
