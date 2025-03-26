@@ -71,6 +71,24 @@ var (
 							},
 						},
 					},
+					InitContainers: []corev1.Container{
+						{
+							Name:            "init-kvrocks-cfg",
+							Image:           DefaultKVRocksImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"sh",
+								"-c",
+								"test -f " + KVRocksDataDir + "/kvrocks.conf || cp -f " + KVRocksConfDir + "/kvrocks.conf " + KVRocksDataDir + "/kvrocks.conf",
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      KVRocksVolumeName,
+									MountPath: KVRocksDataDir,
+								},
+							},
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "kvrocks",
@@ -78,7 +96,7 @@ var (
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command: []string{
 								"kvrocks",
-								"-c", KVRocksConfDir + "/kvrocks.conf",
+								"-c", KVRocksDataDir + "/kvrocks.conf",
 								"--dir", KVRocksDataDir,
 								"--backup-dir", KVRocksBackupDir,
 								"--pidfile", "/var/run/kvrocks/kvrocks.pid",
