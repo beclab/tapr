@@ -78,10 +78,20 @@ type UserDomain struct {
 func (u *UserDomain) doAdd(context.Context, *kubesphere.User) error { return nil }
 
 // doDelete implements task.
-func (u *UserDomain) doDelete(context.Context, *kubesphere.User) error { return nil }
+func (u *UserDomain) doDelete(ctx context.Context, user *kubesphere.User) error {
+	return u.updateCorefile(ctx, user, func(data, zone, _ string) (string, error) {
+		return watchers.RemoveTemplateFromCorefile(data, zone)
+	})
+}
 
 // doUpdate implements task.
 func (u *UserDomain) doUpdate(ctx context.Context, user *kubesphere.User) error {
+	return u.updateCorefile(ctx, user, func(data, zone, ip string) (string, error) {
+		return watchers.UpsertCorefile(data, zone, ip)
+	})
+}
+
+func (u *UserDomain) updateCorefile(ctx context.Context, user *kubesphere.User, f func(data, zone, ip string) (string, error)) error {
 	zone, ok := user.Annotations[UserAnnotationZoneKey]
 	if !ok || zone == "" {
 		// zone not bind, ignore
@@ -105,7 +115,7 @@ func (u *UserDomain) doUpdate(ctx context.Context, user *kubesphere.User) error 
 		return nil
 	}
 
-	newCorefileData, err := watchers.UpsertCorefile(corefileData, zone, localIp)
+	newCorefileData, err := f(corefileData, zone, localIp)
 	if err != nil {
 		return err
 	}

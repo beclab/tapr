@@ -70,3 +70,42 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 
 	return file.ToString(), nil
 }
+
+func RemoveTemplateFromCorefile(data, userzone string) (string, error) {
+	file, err := corefile.New(data)
+	if err != nil {
+		klog.Error("parse corefile error, ", err)
+		return "", err
+	}
+
+	if len(file.Servers) != 1 {
+		klog.Warning("invalid corefile configuration")
+		return data, nil
+	}
+
+	var newPlugins []*corefile.Plugin
+	userTemplateArgs := []string{"IN", "A", userzone}
+	for _, p := range file.Servers[0].Plugins {
+		// only care about template plugins
+		if p.Name != "template" {
+			newPlugins = append(newPlugins, p)
+			continue
+		}
+
+		if len(p.Args) != 3 {
+			// the template is not added by us, keep it
+			klog.Info(p.Args)
+			newPlugins = append(newPlugins, p)
+			continue
+		}
+
+		if p.Args[2] == userTemplateArgs[2] {
+			// remove the template plugin
+			continue
+		}
+	}
+
+	file.Servers[0].Plugins = newPlugins
+
+	return file.ToString(), nil
+}
