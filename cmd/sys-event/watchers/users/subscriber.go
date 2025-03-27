@@ -88,7 +88,7 @@ func (u *UserDomain) doUpdate(ctx context.Context, user *kubesphere.User) error 
 		return nil
 	}
 
-	localIp, ok := user.Annotations[UserAnnotationLocalDomainIp]
+	localIp, ok := user.Annotations[UserAnnotationLocalDomainDNSRecord]
 	if !ok || localIp == "" {
 		return nil
 	}

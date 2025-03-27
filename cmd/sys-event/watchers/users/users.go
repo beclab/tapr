@@ -39,7 +39,7 @@ const InvokeRetry = 10
 
 const UserTerminusWizardStatus = "bytetrade.io/wizard-status"
 const UserAnnotationZoneKey = "bytetrade.io/zone"
-const UserAnnotationLocalDomainIp = "bytetrade.io/local-domain-ip"
+const UserAnnotationLocalDomainDNSRecord = "bytetrade.io/local-domain-dns-record"
 
 type WizardStatus string
 
