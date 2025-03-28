@@ -104,17 +104,22 @@ func (a *appController) UploadLink(c *fiber.Ctx) error {
 		if err := os.MkdirAll(uploadsDir, os.ModePerm); err != nil {
 			klog.Warning("err:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
-				models.NewResponse(1, "failed to create folder", nil))
+				models.NewResponse(1, err.Error(), nil)) //"failed to create folder", nil))
 		}
 	}
 	klog.Infof("c:%+v", c)
 
 	if !utils.CheckDirExist(path) {
-		if err := os.MkdirAll(path, os.ModePerm); err != nil {
-			klog.Warning("err:", err)
+		if err = fileutils.MkdirAllWithChown(path, os.ModePerm); err != nil {
+			klog.Error("err:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
-				models.NewResponse(1, "failed to create folder", nil))
+				models.NewResponse(1, err.Error(), nil)) //"failed to create folder", nil))
 		}
+		//if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		//	klog.Warning("err:", err)
+		//	return c.Status(fiber.StatusInternalServerError).JSON(
+		//		models.NewResponse(1, "failed to create folder", nil))
+		//}
 	}
 
 	uploadID := uid.MakeUid(path)
@@ -421,7 +426,7 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		if err := os.MkdirAll(uploadsDir, os.ModePerm); err != nil {
 			klog.Warningf("uploadID:%s, err:%v", uploadID, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(
-				models.NewResponse(1, "failed to create folder", nil))
+				models.NewResponse(1, err.Error(), nil)) // "failed to create folder", nil))
 		}
 	}
 
@@ -499,11 +504,16 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 		dirPath := filepath.Dir(fullPath)
 
 		if !utils.CheckDirExist(dirPath) {
-			if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
-				klog.Warning("err:", err)
+			if err = fileutils.MkdirAllWithChown(dirPath, os.ModePerm); err != nil {
+				klog.Error("err:", err)
 				return c.Status(fiber.StatusInternalServerError).JSON(
-					models.NewResponse(1, "failed to create folder", nil))
+					models.NewResponse(1, err.Error(), nil)) // "failed to create folder", nil))
 			}
+			//if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+			//	klog.Warning("err:", err)
+			//	return c.Status(fiber.StatusInternalServerError).JSON(
+			//		models.NewResponse(1, "failed to create folder", nil))
+			//}
 		}
 
 		if resumableInfo.ResumableRelativePath == "" {
@@ -723,6 +733,19 @@ func (a *appController) UploadChunks(c *fiber.Ctx) error {
 
 		if info.Offset == offsetStart || (info.Offset-offsetEnd < 0 && info.Offset-offsetStart > 0) {
 			//fileSize, err := fileutils.SaveFile4(fileHeader, fileutils.GetTempFilePathById4(innerIdentifier, uploadsDir), newFile)
+			klog.Info(resumableInfo)
+			if resumableInfo.MD5 != "" {
+				md5, err := fileutils.CalculateMD5(fileHeader)
+				if err != nil {
+					return c.Status(fiber.StatusInternalServerError).JSON(
+						models.NewResponse(1, err.Error(), info))
+				}
+				if md5 != resumableInfo.MD5 {
+					msg := fmt.Sprintf("Invalid MD5, accepted %s, calculated %s", resumableInfo.MD5, md5)
+					return c.Status(fiber.StatusBadRequest).JSON(
+						models.NewResponse(1, msg, info))
+				}
+			}
 			fileSize, err := fileutils.SaveFile4(fileHeader, filepath.Join(uploadsDir, tmpName), newFile, offsetStart)
 			if err != nil {
 				klog.Warningf("innerIdentifier:%s, info:%+v, err:%v", innerIdentifier, info, err)
