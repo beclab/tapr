@@ -24,11 +24,11 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 	newOptions := []*corefile.Option{
 		{
 			Name: "match",
-			Args: []string{fmt.Sprintf("\\w*\\.?(%s\\.)$", userzone)},
+			Args: []string{fmt.Sprintf("\"\\w*\\.?(%s\\.)$\"", userzone)},
 		},
 		{
 			Name: "answer",
-			Args: []string{"{{ .Name }}", "60", "IN", "A", ip},
+			Args: []string{fmt.Sprintf("\"{{ .Name }} 60 IN A %s\"", ip)},
 		},
 		{
 			Name: "fallthrough",
