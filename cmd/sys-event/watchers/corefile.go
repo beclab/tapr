@@ -35,7 +35,14 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 			Args: []string{},
 		},
 	}
+	anyOptions := []*corefile.Option{
+		{
+			Name: "rcode",
+			Args: []string{"NXDOMAIN"},
+		},
+	}
 	userTemplateArgs := []string{"IN", "A", userzone}
+	userTemplateAnyArgs := []string{"IN", "ANY", userzone}
 
 	for _, p := range file.Servers[0].Plugins {
 		// only care about template plugins
@@ -51,7 +58,8 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 			continue
 		}
 
-		if p.Args[2] == userTemplateArgs[2] {
+		// update query type A with new options
+		if p.Args[2] == userTemplateArgs[2] && userTemplateArgs[1] == "A" {
 			found = true
 			p.Options = newOptions
 			newPlugins = append(newPlugins, p)
@@ -63,6 +71,12 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 			Name:    "template",
 			Args:    userTemplateArgs,
 			Options: newOptions,
+		})
+
+		newPlugins = append(newPlugins, &corefile.Plugin{
+			Name:    "template",
+			Args:    userTemplateAnyArgs,
+			Options: anyOptions,
 		})
 	}
 
