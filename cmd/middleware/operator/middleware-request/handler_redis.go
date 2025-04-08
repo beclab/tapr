@@ -141,6 +141,17 @@ func (c *controller) deleteKVRocksRequest(req *aprv1.MiddlewareRequest, cluster 
 
 	// TODO: redis db support
 	requestNamespace := GetKVRocksNamespaceName(req.Namespace, req.Spec.Redis.Namespace)
+	ns, err := cli.GetNamespace(c.ctx, requestNamespace)
+	if err != nil {
+		klog.Error("get kvrocks namespace error, ", err, ", ", req.Name, ", ", req.Namespace)
+		return err
+	}
+
+	if ns == nil {
+		klog.Info("kvrocks namespace not exists, ", req.Name, ", ", req.Namespace)
+		return nil
+	}
+
 	err = cli.DeleteNamespace(c.ctx, requestNamespace)
 	if err != nil {
 		klog.Error("delete kvrocks namespace error, ", err, ", ", req.Name, ", ", req.Namespace)
