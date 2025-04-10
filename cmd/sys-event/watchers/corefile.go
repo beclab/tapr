@@ -59,9 +59,15 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 		}
 
 		// update query type A with new options
-		if p.Args[2] == userTemplateArgs[2] && userTemplateArgs[1] == "A" {
+		if p.Args[2] == userTemplateArgs[2] && p.Args[1] == userTemplateArgs[1] {
 			found = true
 			p.Options = newOptions
+			newPlugins = append(newPlugins, p)
+		}
+
+		// update query type ANY with ANY options
+		if p.Args[2] == userTemplateAnyArgs[2] && p.Args[1] == userTemplateAnyArgs[1] {
+			p.Options = anyOptions
 			newPlugins = append(newPlugins, p)
 		}
 	}
