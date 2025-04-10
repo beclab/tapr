@@ -2,6 +2,7 @@ package watchers
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/coredns/corefile-migration/migration/corefile"
 	"k8s.io/klog/v2"
@@ -69,6 +70,13 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 			newPlugins = append(newPlugins, p)
 		} else {
 			// another user's template, keep it
+			for _, o := range p.Options {
+				switch o.Name {
+				case "match", "answer":
+					// fix args to one string
+					o.Args = []string{fmt.Sprintf("\"%s\"", strings.Join(o.Args, " "))}
+				}
+			}
 			newPlugins = append(newPlugins, p)
 		}
 	}
