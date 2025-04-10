@@ -63,11 +63,12 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 			found = true
 			p.Options = newOptions
 			newPlugins = append(newPlugins, p)
-		}
-
-		// update query type ANY with ANY options
-		if p.Args[2] == userTemplateAnyArgs[2] && p.Args[1] == userTemplateAnyArgs[1] {
+		} else if p.Args[2] == userTemplateAnyArgs[2] && p.Args[1] == userTemplateAnyArgs[1] {
+			// update query type ANY with ANY options
 			p.Options = anyOptions
+			newPlugins = append(newPlugins, p)
+		} else {
+			// another user's template, keep it
 			newPlugins = append(newPlugins, p)
 		}
 	}
