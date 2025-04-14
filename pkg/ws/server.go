@@ -18,8 +18,8 @@ type WebSocketServer interface {
 	SetHandler(cb callback)
 
 	List() []map[string]interface{}
-	Close(users []string, conns []string)
-	Push(connId string, users []string, message interface{})
+	Close(users []string, tokens []string, conns []string)
+	Push(connId string, tokens []string, users []string, message interface{})
 }
 
 type Server struct {
@@ -97,12 +97,14 @@ func (server *Server) List() []map[string]interface{} {
 		r["name"] = z.name
 		z.RLock()
 		for _, c := range z.conns {
+			tokenOriginal := c.getTokenOriginal()
 			connId := c.getConnId()
 			userAgent := c.getUserAgent()
 			userAgentTag := c.md5([]byte(userAgent))
 
 			var cs = map[string]string{}
 			cs["id"] = connId
+			cs["token"] = tokenOriginal
 			cs["userAgent"] = userAgent
 			cs["userAgentTag"] = userAgentTag
 			ccs = append(ccs, cs)
@@ -116,19 +118,21 @@ func (server *Server) List() []map[string]interface{} {
 	return res
 }
 
-func (server *Server) Close(users []string, conns []string) {
+func (server *Server) Close(users []string, tokens []string, conns []string) {
 	var m = &CloseMessage{
-		Users: users,
-		Conns: conns,
+		Users:  users,
+		Tokens: tokens,
+		Conns:  conns,
 	}
 
 	server.queue.close <- m
 }
 
-func (server *Server) Push(connId string, users []string, message interface{}) {
+func (server *Server) Push(connId string, tokens []string, users []string, message interface{}) {
 	var m = &WriteMessage{
 		MessageType: websocket.TextMessage,
 		ConnId:      connId,
+		Tokens:      tokens,
 		Users:       users,
 		Message:     message,
 	}
@@ -175,16 +179,19 @@ func (server *Server) routineClose() {
 				server.queue.close = make(chan *CloseMessage, queueSize)
 				continue
 			}
-			server.closeConns(elem.Users, elem.Conns)
+			server.closeConns(elem.Users, elem.Tokens, elem.Conns)
 		}
 	}
 }
 
-func (server *Server) closeConns(users []string, conns []string) {
+func (server *Server) closeConns(users []string, tokens []string, conns []string) {
 	var filter = NewFilter(server)
 
 	if users != nil && len(users) > 0 {
 		filter.FilterByUsers(users)
+	}
+	if tokens != nil && len(tokens) > 0 {
+		filter.FilterByTokens(tokens)
 	}
 	if conns != nil && len(conns) > 0 {
 		filter.FilterByConnIds(conns)
@@ -265,11 +272,14 @@ func (server *Server) routineWrite() {
 				continue
 			}
 
-			klog.Infof("send message data: %s, connId: %s, users: %v", string(msg), elem.ConnId, elem.Users)
+			klog.Infof("send message data: %s, connId: %s, token: %v, users: %v", string(msg), elem.ConnId, elem.Tokens, elem.Users)
 
 			var filter = NewFilter(server)
 			if elem.Users != nil && len(elem.Users) > 0 {
 				filter.FilterByUsers(elem.Users)
+			}
+			if elem.Tokens != nil && len(elem.Tokens) > 0 {
+				filter.FilterByTokens(elem.Tokens)
 			}
 			if elem.ConnId != "" {
 				filter.FilterByConnIds([]string{elem.ConnId})

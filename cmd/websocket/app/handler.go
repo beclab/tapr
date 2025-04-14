@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"bytetrade.io/web3os/tapr/pkg/constants"
+	"bytetrade.io/web3os/tapr/pkg/utils"
 	"bytetrade.io/web3os/tapr/pkg/ws"
 	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/fiber/v2"
@@ -19,8 +20,9 @@ type appController struct {
 
 type sendMesssageReq struct {
 	Payload interface{} `json:"payload"`
-	ConnId  string      `json:"conn_id"`
 	Users   []string    `json:"users"`
+	Tokens  []string    `json:"tokens"`
+	ConnId  string      `json:"conn_id"`
 }
 
 type receiveMessageReq struct {
@@ -31,8 +33,9 @@ type receiveMessageReq struct {
 }
 
 type disConnectionReq struct {
-	Conns []string `json:"conns"`
-	Users []string `json:"users"`
+	Conns  []string `json:"conns"`
+	Tokens []string `json:"tokens"`
+	Users  []string `json:"users"`
 }
 
 func NewController(server *Server) *appController {
@@ -64,7 +67,17 @@ func (a *appController) CloseConnection(c *fiber.Ctx) error {
 		})
 	}
 
-	a.server.webSocketServer.Close(closeReq.Users, closeReq.Conns)
+	var tokens []string
+	if closeReq.Tokens != nil {
+		for _, token := range closeReq.Tokens {
+			if token == "" {
+				continue
+			}
+			tokens = append(tokens, utils.MD5(token))
+		}
+	}
+
+	a.server.webSocketServer.Close(closeReq.Users, tokens, closeReq.Conns)
 
 	return c.JSON(fiber.Map{
 		"code":    0,
@@ -84,7 +97,7 @@ func (a *appController) SendMessage(c *fiber.Ctx) error {
 		})
 	}
 
-	if message.ConnId == "" && (message.Users == nil || len(message.Users) == 0) {
+	if message.ConnId == "" && (message.Users == nil || len(message.Users) == 0) && (message.Tokens == nil || len(message.Tokens) == 0) {
 		klog.Errorf("send message target is nil,  data: %s", string(body))
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
@@ -92,7 +105,14 @@ func (a *appController) SendMessage(c *fiber.Ctx) error {
 		})
 	}
 
-	a.server.webSocketServer.Push(message.ConnId, message.Users, message.Payload)
+	var tokens []string
+	if message.Tokens != nil && len(message.Tokens) > 0 {
+		for _, token := range message.Tokens {
+			tokens = append(tokens, utils.MD5(token))
+		}
+	}
+
+	a.server.webSocketServer.Push(message.ConnId, tokens, message.Users, message.Payload)
 
 	return c.JSON(fiber.Map{
 		"code":    0,

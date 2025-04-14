@@ -103,6 +103,14 @@ func (client *Client) getConnId() string {
 	return client.conn.Locals(constants.WsLocalConnIdKey).(string)
 }
 
+func (client *Client) getToken() string {
+	return client.conn.Locals(constants.WsLocalTokenKey).(string)
+}
+
+func (client *Client) getTokenOriginal() string {
+	return client.conn.Locals(constants.WsLocalTokenKeyOriginal).(string)
+}
+
 func (client *Client) getUser() string {
 	return client.conn.Locals(constants.WsLocalUserKey).(string)
 }

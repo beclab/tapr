@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -10,6 +11,7 @@ import (
 
 type fields struct {
 	user   string
+	token  string
 	connId string
 	client *Client
 }
@@ -27,8 +29,10 @@ func NewFilter(server *Server) *Filter {
 
 	for userName, userConns := range server.users {
 		for connId, conn := range userConns.conns {
+			token := conn.conn.Locals(constants.WsLocalTokenKey).(string)
 			f.data = append(f.data, fields{
 				user:   userName,
+				token:  token,
 				connId: connId,
 				client: conn,
 			})
@@ -67,6 +71,10 @@ func (f *Filter) filter(list []string, fieldValue func(field *fields) string) *F
 
 func (f *Filter) FilterByUsers(users []string) *Filter {
 	return f.filter(users, func(field *fields) string { return field.user })
+}
+
+func (f *Filter) FilterByTokens(tokens []string) *Filter {
+	return f.filter(tokens, func(field *fields) string { return field.token })
 }
 
 func (f *Filter) FilterByConnIds(connIds []string) *Filter {
