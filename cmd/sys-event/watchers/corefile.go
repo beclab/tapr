@@ -39,7 +39,7 @@ func UpsertCorefile(data, userzone, ip string) (string, error) {
 	anyOptions := []*corefile.Option{
 		{
 			Name: "rcode",
-			Args: []string{"NXDOMAIN"},
+			Args: []string{"NOERROR"},
 		},
 	}
 	userTemplateArgs := []string{"IN", "A", userzone}
