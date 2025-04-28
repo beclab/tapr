@@ -31,22 +31,28 @@ type Server struct {
 
 	handler callback
 
-	users map[string]*User
+	publics map[string]*Public // token
+	users   map[string]*User
 
 	sync.RWMutex
 }
 
+type Public struct {
+	id    string // connId
+	token string
+	conn  *Client
+}
+
 type User struct {
-	name string
-
-	conns map[string]*Client
-
+	name  string             // userName
+	conns map[string]*Client // connId / client
 	sync.RWMutex
 }
 
 func NewWebSocketServer() WebSocketServer {
 	var server = &Server{}
 	server.users = map[string]*User{}
+	server.publics = map[string]*Public{}
 	server.queue.read = make(chan *ReadMessage, queueSize)
 	server.queue.write = make(chan *WriteMessage, queueSize)
 	server.queue.close = make(chan *CloseMessage, queueSize)
@@ -62,6 +68,7 @@ func NewWebSocketServer() WebSocketServer {
 func (server *Server) New() func(c *fiber.Ctx) error {
 	return websocket.New(func(c *websocket.Conn) {
 		ctx, cancelFunc := context.WithCancel(context.Background())
+
 		var client = &Client{
 			conn:         c,
 			ctx:          ctx,
@@ -115,6 +122,25 @@ func (server *Server) List() []map[string]interface{} {
 		z.RUnlock()
 	}
 
+	var publics = map[string]interface{}{}
+	var ccs = []map[string]string{}
+	for _, p := range server.publics {
+		if p == nil {
+			continue
+		}
+
+		var cs = map[string]string{}
+		cs["id"] = p.id
+		cs["token"] = p.token
+		cs["userAgent"] = p.conn.getUserAgent()
+		cs["userAgentTag"] = p.conn.md5([]byte(p.conn.getUserAgent()))
+		ccs = append(ccs, cs)
+	}
+	publics["conns"] = ccs
+	publics["conns_number"] = len(ccs)
+	publics["name"] = "publics"
+	res = append(res, publics)
+
 	return res
 }
 
@@ -145,22 +171,35 @@ func (server *Server) addClient(c *Client) *Client {
 	defer server.Unlock()
 
 	var userName = c.getUser()
+	var accessPublic = c.getAccessLevel()
 	var connId = c.getConnId()
 
-	user, ok := server.users[userName]
-	if !ok {
-		var newUser = &User{conns: map[string]*Client{}}
-		newUser.Lock()
-		newUser.name = userName
-		newUser.conns[connId] = c
-		server.users[userName] = newUser
-		newUser.Unlock()
+	if !accessPublic {
+		user, ok := server.users[userName]
+		if !ok {
+			var newUser = &User{conns: map[string]*Client{}}
+			newUser.Lock()
+			newUser.name = userName
+			newUser.conns[connId] = c
+			server.users[userName] = newUser
+			newUser.Unlock()
+			return c
+		}
+
+		user.Lock()
+		user.conns[connId] = c
+		user.Unlock()
+
 		return c
 	}
 
-	user.Lock()
-	user.conns[connId] = c
-	user.Unlock()
+	var token = c.getToken()
+	var tokenOriginal = c.getTokenOriginal()
+	server.publics[token] = &Public{
+		id:    connId,
+		token: tokenOriginal,
+		conn:  c,
+	}
 
 	return c
 }
@@ -203,6 +242,7 @@ func (server *Server) closeConns(users []string, tokens []string, conns []string
 	}
 
 	var removeusers []string
+	var removepublics []string
 	server.Lock()
 	for userName, userClients := range server.users {
 		userClients.Lock()
@@ -219,20 +259,35 @@ func (server *Server) closeConns(users []string, tokens []string, conns []string
 		userClients.Unlock()
 	}
 
+	for token, public := range server.publics {
+		for _, connId := range result {
+			if public.id == connId {
+				public.conn.close()
+				removepublics = append(removepublics, token)
+			}
+		}
+	}
+
 	for _, removeuser := range removeusers {
 		delete(server.users, removeuser)
+	}
+
+	for _, removetoken := range removepublics {
+		delete(server.publics, removetoken)
 	}
 
 	server.Unlock()
 }
 
-func (server *Server) read(connId, userName string, message interface{}, cookie string, action string) {
+func (server *Server) read(accessPublic bool, token, connId, userName string, message interface{}, cookie string, action string) {
 	server.queue.read <- &ReadMessage{
-		ConnId:   connId,
-		UserName: userName,
-		Data:     message,
-		Action:   action,
-		Cookie:   cookie,
+		AccessPublic: accessPublic,
+		Token:        token,
+		ConnId:       connId,
+		UserName:     userName,
+		Data:         message,
+		Action:       action,
+		Cookie:       cookie,
 	}
 }
 
@@ -299,6 +354,15 @@ func (server *Server) routineWrite() {
 					}
 					userClients.RUnlock()
 				}
+
+				for _, public := range server.publics {
+					for _, connId := range result {
+						if public.id == connId {
+							public.conn.conn.WriteMessage(elem.MessageType, msg)
+						}
+					}
+				}
+
 				server.RUnlock()
 			}
 		}

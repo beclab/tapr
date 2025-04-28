@@ -39,6 +39,15 @@ func NewFilter(server *Server) *Filter {
 		}
 	}
 
+	for token, publicConn := range server.publics {
+		f.data = append(f.data, fields{
+			user:   token,
+			token:  token,
+			connId: publicConn.id,
+			client: publicConn.conn,
+		})
+	}
+
 	return f
 }
 

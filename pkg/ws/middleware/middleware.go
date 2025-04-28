@@ -1,15 +1,21 @@
 package middleware
 
 import (
-	"fmt"
 	"strings"
 
 	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/utils"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"k8s.io/klog/v2"
 )
+
+var accessPublic = func() (string, string, bool) {
+	var token = uuid.New().String()
+	var userName = token
+	return token, userName, true
+}
 
 func RequireHeader() func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
@@ -18,42 +24,55 @@ func RequireHeader() func(c *fiber.Ctx) error {
 		}
 		var headers = c.GetReqHeaders()
 		if headers == nil {
-			return fiber.ErrUpgradeRequired
+			return fiber.ErrBadRequest
 		}
 
-		var connId = fmt.Sprintf("%d", c.Context().ConnID())
+		var connId = uuid.New().String()
 
-		var token, err = GetToken(headers[constants.WsHeaderCookie])
-		if err != nil {
-			klog.Errorf("get token error, %+v, user: %s, connId: %s, headers: %+v", err, headers[constants.WsHeaderBflUser], connId, headers)
-			return err
-		}
+		// If it's a public environment access, cookie data is invalid, set to anonymous state, making token equal to userName, and also equal to uuid
 
-		klog.Infof("ws-client conn: %s, token: %s, header: %+v", connId, token, headers)
+		var token, userName, accessPublic = GetHeadersUserInfo(headers)
+		var userAgent = headers[constants.WsHeaderUserAgent]
+		var forwarded = headers[constants.WsHeaderForwardeFor]
+		var cookie = headers[constants.WsHeaderCookie]
+
+		klog.Infof("ws-client conn: %s, accessPublic: %v, token: %s, user: %s , header: %+v", connId, accessPublic, token, userName, headers)
 
 		var secWebsocketProtocol, ok = headers[constants.WsHeaderSecWebsocketProtocol]
 		if ok {
 			c.Set(constants.WsHeaderSecWebsocketProtocol, secWebsocketProtocol)
 		}
 
-		c.Locals(constants.WsLocalUserKey, headers[constants.WsHeaderBflUser])
+		c.Locals(constants.WsLocalAccessPublic, accessPublic)
+		c.Locals(constants.WsLocalUserKey, userName)
 		c.Locals(constants.WsLocalConnIdKey, connId)
 		c.Locals(constants.WsLocalTokenKey, utils.MD5(token))
 		c.Locals(constants.WsLocalTokenKeyOriginal, token)
-		c.Locals(constants.WsLocalUserAgentKey, headers[constants.WsHeaderUserAgent])
-		c.Locals(constants.WsLocalClientIpKey, headers[constants.WsHeaderForwardeFor])
-		c.Locals(constants.WsLocalCookie, headers[constants.WsHeaderCookie])
+		c.Locals(constants.WsLocalUserAgentKey, userAgent)
+		c.Locals(constants.WsLocalClientIpKey, forwarded)
+		c.Locals(constants.WsLocalCookie, cookie)
 
 		return c.Next()
 	}
 }
 
-func GetToken(cookie string) (string, *fiber.Error) {
+func GetHeadersUserInfo(headers map[string]string) (string, string, bool) {
+	var username = headers[constants.WsHeaderBflUser]
+	if strings.EqualFold(username, "") {
+		return accessPublic()
+	}
+
+	var cookie = headers[constants.WsHeaderCookie]
+
+	if strings.EqualFold(cookie, "") {
+		return accessPublic()
+	}
+
 	var token string
 	var authToken string
 	var items = strings.Split(cookie, ";")
 	if items == nil || len(items) == 0 {
-		return token, fiber.ErrForbidden
+		return accessPublic()
 	}
 
 	var found bool
@@ -67,20 +86,19 @@ func GetToken(cookie string) (string, *fiber.Error) {
 	}
 
 	if !found {
-		return token, fiber.ErrUnauthorized
+		return accessPublic()
 	}
 
 	var tokensplit = strings.Split(authToken, "=")
 	if tokensplit == nil || len(tokensplit) != 2 {
-		return token, fiber.ErrUnauthorized
+		return accessPublic()
 	}
 
 	if tokensplit[1] == "" {
-		return token, fiber.ErrUnauthorized
+		return accessPublic()
 	}
 
 	token = tokensplit[1]
 
-	return token, nil
-
+	return token, username, false
 }

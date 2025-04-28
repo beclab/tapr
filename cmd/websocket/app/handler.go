@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -126,14 +127,19 @@ func (a *appController) handleWebSocketMessage(data *ws.ReadMessage) {
 	}
 
 	var cookie = data.Cookie
-	resp, err := a.httpClient.R().SetHeader(constants.WsHeaderCookie, cookie).SetBody(data).Post(a.server.appPath)
+	resp, err := a.httpClient.R().
+		SetHeader(constants.WsHeaderWsAccessPublic, fmt.Sprintf("%v", data.AccessPublic)).
+		SetHeader(constants.WsHeaderWsToken, data.Token).
+		SetHeader(constants.WsHeaderWsConnId, data.ConnId).
+		SetHeader(constants.WsHeaderCookie, cookie).
+		SetBody(data).Post(a.server.appPath)
 	if err != nil {
-		klog.Errorf("send to app error, %+v, user: %s, connId: %s", err, data.UserName, data.ConnId)
+		klog.Errorf("send to app error, %+v, accessPublic: %v, user: %s, connId: %s", err, data.AccessPublic, data.UserName, data.ConnId)
 		return
 	}
 
 	if resp.StatusCode() >= 400 {
-		klog.Errorf("send to app response status error, %d, user: %s, connId: %s", resp.StatusCode(), data.UserName, data.ConnId)
+		klog.Errorf("send to app response status error, %d, accessPublic: %v, user: %s, connId: %s", resp.StatusCode(), data.AccessPublic, data.UserName, data.ConnId)
 	}
 }
 

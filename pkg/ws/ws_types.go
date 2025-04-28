@@ -5,17 +5,20 @@ const expirationTicker = 30
 const expirationDuration = 45
 
 type CloseMessage struct {
-	Conns  []string
-	Tokens []string
-	Users  []string
+	Anonymous bool `json:"anonymous"`
+	Conns     []string
+	Tokens    []string
+	Users     []string
 }
 
 type ReadMessage struct {
-	Data     interface{} `json:"data"`
-	Action   string      `json:"action"`
-	Cookie   string      `json:"-"`
-	UserName string      `json:"user_name"`
-	ConnId   string      `json:"conn_id"`
+	Data         interface{} `json:"data"`
+	Action       string      `json:"action"`
+	Cookie       string      `json:"-"`
+	UserName     string      `json:"user_name"`
+	ConnId       string      `json:"conn_id"`
+	Token        string      `json:"token"`
+	AccessPublic bool        `json:"access_public"`
 }
 
 type WriteMessage struct {
