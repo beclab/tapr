@@ -17,7 +17,7 @@ type WebSocketServer interface {
 	New() func(c *fiber.Ctx) error
 	SetHandler(cb callback)
 
-	List() []map[string]interface{}
+	List() map[string]interface{}
 	Close(users []string, tokens []string, conns []string)
 	Push(connId string, tokens []string, users []string, message interface{})
 }
@@ -88,12 +88,13 @@ func (server *Server) SetHandler(cb callback) {
 	server.handler = cb
 }
 
-func (server *Server) List() []map[string]interface{} {
+func (server *Server) List() map[string]interface{} {
 	server.RLock()
 	defer server.RUnlock()
 
-	var res = []map[string]interface{}{}
+	var result = make(map[string]interface{})
 
+	var users = []map[string]interface{}{}
 	for _, z := range server.users {
 		if z == nil {
 			continue
@@ -118,11 +119,12 @@ func (server *Server) List() []map[string]interface{} {
 		}
 		r["conns"] = ccs
 		r["conns_number"] = len(ccs)
-		res = append(res, r)
+		users = append(users, r)
 		z.RUnlock()
 	}
 
-	var publics = map[string]interface{}{}
+	result["users"] = users
+
 	var ccs = []map[string]string{}
 	for _, p := range server.publics {
 		if p == nil {
@@ -136,12 +138,10 @@ func (server *Server) List() []map[string]interface{} {
 		cs["userAgentTag"] = p.conn.md5([]byte(p.conn.getUserAgent()))
 		ccs = append(ccs, cs)
 	}
-	publics["conns"] = ccs
-	publics["conns_number"] = len(ccs)
-	publics["name"] = "publics"
-	res = append(res, publics)
 
-	return res
+	result["publics"] = ccs
+
+	return result
 }
 
 func (server *Server) Close(users []string, tokens []string, conns []string) {
