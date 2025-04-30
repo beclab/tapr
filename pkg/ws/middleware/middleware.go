@@ -11,10 +11,9 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var accessPublic = func() (string, string, bool) {
+var accessPublic = func() (string, bool) {
 	var token = uuid.New().String()
-	var userName = token
-	return token, userName, true
+	return token, true
 }
 
 func RequireHeader() func(c *fiber.Ctx) error {
@@ -31,7 +30,8 @@ func RequireHeader() func(c *fiber.Ctx) error {
 
 		// If it's a public environment access, cookie data is invalid, set to anonymous state, making token equal to userName, and also equal to uuid
 
-		var token, userName, accessPublic = GetHeadersUserInfo(headers)
+		var userName = headers[constants.WsHeaderBflUser]
+		var token, accessPublic = GetHeadersUserInfo(headers)
 		var userAgent = headers[constants.WsHeaderUserAgent]
 		var forwarded = headers[constants.WsHeaderForwardeFor]
 		var cookie = headers[constants.WsHeaderCookie]
@@ -56,12 +56,7 @@ func RequireHeader() func(c *fiber.Ctx) error {
 	}
 }
 
-func GetHeadersUserInfo(headers map[string]string) (string, string, bool) {
-	var username = headers[constants.WsHeaderBflUser]
-	if strings.EqualFold(username, "") {
-		return accessPublic()
-	}
-
+func GetHeadersUserInfo(headers map[string]string) (string, bool) {
 	var cookie = headers[constants.WsHeaderCookie]
 
 	if strings.EqualFold(cookie, "") {
@@ -100,5 +95,5 @@ func GetHeadersUserInfo(headers map[string]string) (string, string, bool) {
 
 	token = tokensplit[1]
 
-	return token, username, false
+	return token, false
 }

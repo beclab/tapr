@@ -127,9 +127,6 @@ func (a *appController) handleWebSocketMessage(data *ws.ReadMessage) {
 
 	var cookie = data.Cookie
 	resp, err := a.httpClient.R().
-		// SetHeader(constants.WsHeaderWsAccessPublic, fmt.Sprintf("%v", data.AccessPublic)).
-		// SetHeader(constants.WsHeaderWsToken, data.Token).
-		// SetHeader(constants.WsHeaderWsConnId, data.ConnId).
 		SetHeader(constants.WsHeaderCookie, cookie).
 		SetBody(data).Post(a.server.appPath)
 	if err != nil {
