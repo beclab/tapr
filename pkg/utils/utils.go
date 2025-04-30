@@ -1,10 +1,16 @@
 package utils
 
 import (
+	"crypto/md5"
 	"encoding/hex"
 	"errors"
 	"os"
 )
+
+func MD5(s string) string {
+	hash := md5.Sum([]byte(s))
+	return hex.EncodeToString(hash[:])
+}
 
 func Hex(data []byte) string {
 	buf := make([]byte, hex.EncodedLen(len(data)))

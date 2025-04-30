@@ -19,14 +19,12 @@ const (
 )
 
 type Client struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	conn *websocket.Conn
-
+	ctx          context.Context
+	cancel       context.CancelFunc
+	conn         *websocket.Conn
 	closeHandler func(connId string)
 	writeHandler func(connId string, msgType int, message interface{})
-	readHandler  func(connId, userName string, message interface{}, cookie string, action string)
+	readHandler  func(anonymous bool, token, connId, userName string, message interface{}, cookie string, action string)
 }
 
 func (client *Client) setLocals() *Client {
@@ -37,10 +35,12 @@ func (client *Client) setLocals() *Client {
 }
 
 func (client *Client) noticeConnected(c *Client) *Client {
-	var userName = c.getUser()
+	var accessPublic = c.getAccessLevel()
+	var userName = c.getUser() // userName or token(uuid)
 	var connId = c.getConnId()
 	var cookie = c.getCookie()
-	client.readHandler(connId, userName, struct{}{}, cookie, ACTION_OPEN)
+	var token = c.getTokenOriginal() // auth-token or token(uuid)
+	client.readHandler(accessPublic, token, connId, userName, struct{}{}, cookie, ACTION_OPEN)
 	return c
 }
 
@@ -51,23 +51,30 @@ func (client *Client) onConnection() {
 		err error
 	)
 
+	var accessPublic = client.getAccessLevel()
 	var connId = client.getConnId()
 	var userName = client.getUser()
 	var cookie = client.getCookie()
+	var token = client.getTokenOriginal()
 
 	for {
 		select {
 		case <-client.ctx.Done():
+			if err := client.conn.Close(); err != nil {
+				klog.Errorf("websocket connection close error, id: %s, accessPublic: %v, err: %v", connId, accessPublic, err)
+			} else {
+				klog.Infof("websocket connection closed, id: %s, accessPublic: %v", connId, accessPublic)
+			}
 			return
 		default:
 			if mt, msg, err = client.conn.ReadMessage(); err != nil || mt < 1 {
-				klog.Infof("read message invalid, id: %s, type: %d, closed: %v", connId, mt, err)
-				client.readHandler(connId, userName, struct{}{}, cookie, ACTION_CLOSE)
+				klog.Infof("read message invalid, id: %s, accessPublic: %v, type: %d, closed: %v", connId, accessPublic, mt, err)
+				client.readHandler(accessPublic, token, connId, userName, struct{}{}, cookie, ACTION_CLOSE)
 				client.closeHandler(connId)
 				return
 			}
 
-			klog.Infof("read message, type: %d, connId: %s, user: %s, data: %s", mt, connId, userName, string(msg))
+			klog.Infof("read message, type: %d, accessPublic: %v, connId: %s, user: %s, data: %s", mt, accessPublic, connId, userName, string(msg))
 
 			if client.checkPingMessage(msg) {
 				client.writeHandler(connId, websocket.TextMessage, map[string]interface{}{"event": "pong"})
@@ -80,7 +87,7 @@ func (client *Client) onConnection() {
 				klog.Errorf("unmarshal message error %+v, data: %s", err, string(msg))
 			}
 
-			client.readHandler(connId, userName, data, cookie, ACTION_MESSAGE)
+			client.readHandler(accessPublic, token, connId, userName, data, cookie, ACTION_MESSAGE)
 		}
 	}
 }
@@ -103,12 +110,24 @@ func (client *Client) getConnId() string {
 	return client.conn.Locals(constants.WsLocalConnIdKey).(string)
 }
 
+func (client *Client) getToken() string {
+	return client.conn.Locals(constants.WsLocalTokenKey).(string)
+}
+
+func (client *Client) getTokenOriginal() string {
+	return client.conn.Locals(constants.WsLocalTokenKeyOriginal).(string)
+}
+
+func (client *Client) getAccessLevel() bool {
+	return client.conn.Locals(constants.WsLocalAccessPublic).(bool)
+}
+
 func (client *Client) getUser() string {
 	return client.conn.Locals(constants.WsLocalUserKey).(string)
 }
 
 func (client *Client) getUserAgent() string {
-	return client.conn.Locals(constants.WsLocalUserKey).(string)
+	return client.conn.Locals(constants.WsLocalUserAgentKey).(string)
 }
 
 func (client *Client) getCookie() string {

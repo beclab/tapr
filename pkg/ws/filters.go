@@ -1,6 +1,9 @@
 package ws
 
 import (
+	"fmt"
+
+	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -10,7 +13,9 @@ import (
 
 type fields struct {
 	user   string
+	token  string
 	connId string
+	public string
 	client *Client
 }
 
@@ -27,8 +32,12 @@ func NewFilter(server *Server) *Filter {
 
 	for userName, userConns := range server.users {
 		for connId, conn := range userConns.conns {
+			token := conn.conn.Locals(constants.WsLocalTokenKey).(string)
+			public := conn.conn.Locals(constants.WsLocalAccessPublic).(bool)
 			f.data = append(f.data, fields{
 				user:   userName,
+				token:  token,
+				public: fmt.Sprintf("%v", public),
 				connId: connId,
 				client: conn,
 			})
@@ -67,6 +76,18 @@ func (f *Filter) filter(list []string, fieldValue func(field *fields) string) *F
 
 func (f *Filter) FilterByUsers(users []string) *Filter {
 	return f.filter(users, func(field *fields) string { return field.user })
+}
+
+func (f *Filter) FilterByUsersPublicsOnly() *Filter {
+	return f.filter([]string{"true"}, func(field *fields) string { return field.public })
+}
+
+func (f *Filter) FilterByUsersPrivatesOnly() *Filter {
+	return f.filter([]string{"false"}, func(field *fields) string { return field.public })
+}
+
+func (f *Filter) FilterByTokens(tokens []string) *Filter {
+	return f.filter(tokens, func(field *fields) string { return field.token })
 }
 
 func (f *Filter) FilterByConnIds(connIds []string) *Filter {
