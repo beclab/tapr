@@ -3,7 +3,6 @@ package ws
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -19,8 +18,8 @@ type WebSocketServer interface {
 	SetHandler(cb callback)
 
 	List() []map[string]interface{}
-	Close(connIds []string, tokens []string, users []string, usersWithPublic bool)
-	Push(connId string, tokens []string, users []string, usersWithPublic bool, message interface{})
+	Close(connIds []string, tokens []string, users []string, usersWithPublic int)
+	Push(connId string, tokens []string, users []string, usersWithPublic int, message interface{})
 }
 
 type Server struct {
@@ -132,24 +131,24 @@ func (server *Server) List() []map[string]interface{} {
 	return users
 }
 
-func (server *Server) Close(connIds []string, tokens []string, users []string, usersWithPublic bool) {
+func (server *Server) Close(connIds []string, tokens []string, users []string, usersAccessType int) {
 	var m = &CloseMessage{
 		ConnIds:         connIds,
 		Tokens:          tokens,
 		Users:           users,
-		UsersWithPublic: usersWithPublic,
+		UsersAccessType: usersAccessType,
 	}
 
 	server.queue.close <- m
 }
 
-func (server *Server) Push(connId string, tokens []string, users []string, usersWithPublic bool, message interface{}) {
+func (server *Server) Push(connId string, tokens []string, users []string, usersAccessType int, message interface{}) {
 	var m = &WriteMessage{
 		MessageType:     websocket.TextMessage,
 		ConnId:          connId,
 		Tokens:          tokens,
 		Users:           users,
-		UsersWithPublic: usersWithPublic,
+		UsersAccessType: usersAccessType,
 		Message:         message,
 	}
 
@@ -195,18 +194,20 @@ func (server *Server) routineClose() {
 				server.queue.close = make(chan *CloseMessage, queueSize)
 				continue
 			}
-			server.closeConns(elem.ConnIds, elem.Tokens, elem.Users, elem.UsersWithPublic)
+			server.closeConns(elem.ConnIds, elem.Tokens, elem.Users, elem.UsersAccessType)
 		}
 	}
 }
 
-func (server *Server) closeConns(connIds []string, tokens []string, users []string, usersWithPublic bool) {
+func (server *Server) closeConns(connIds []string, tokens []string, users []string, usersAccessType int) {
 	var filter = NewFilter(server)
 
 	if users != nil && len(users) > 0 {
 		filter.FilterByUsers(users)
-		if !usersWithPublic {
-			filter.FilterByUsersPublicAccess([]string{fmt.Sprintf("%v", usersWithPublic)})
+		if usersAccessType == 1 {
+			filter.FilterByUsersPrivatesOnly()
+		} else if usersAccessType == 2 {
+			filter.FilterByUsersPublicsOnly()
 		}
 	}
 	if tokens != nil && len(tokens) > 0 {
@@ -299,8 +300,10 @@ func (server *Server) routineWrite() {
 			var filter = NewFilter(server)
 			if elem.Users != nil && len(elem.Users) > 0 {
 				filter.FilterByUsers(elem.Users)
-				if !elem.UsersWithPublic {
-					filter.FilterByUsersPublicAccess([]string{fmt.Sprintf("%v", elem.UsersWithPublic)})
+				if elem.UsersAccessType == 1 {
+					filter.FilterByUsersPrivatesOnly()
+				} else if elem.UsersAccessType == 2 {
+					filter.FilterByUsersPublicsOnly()
 				}
 			}
 			if elem.Tokens != nil && len(elem.Tokens) > 0 {

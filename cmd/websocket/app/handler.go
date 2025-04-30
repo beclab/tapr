@@ -21,7 +21,7 @@ type appController struct {
 type sendMesssageReq struct {
 	Payload         interface{} `json:"payload"`
 	Users           []string    `json:"users"`
-	UsersWithPublic bool        `json:"users_with_public"`
+	UsersAccessType int         `json:"users_access_type"` // 0 - all; 1 - private; 2 - publics
 	Tokens          []string    `json:"tokens"`
 	ConnId          string      `json:"conn_id"`
 }
@@ -37,7 +37,7 @@ type disConnectionReq struct {
 	Conns           []string `json:"conns"`
 	Tokens          []string `json:"tokens"`
 	Users           []string `json:"users"`
-	UsersWithPublic bool     `json:"users_with_public"`
+	UsersAccessType int      `json:"users_access_type"` // 0 - all; 1 - private; 2 - publics
 }
 
 func NewController(server *Server) *appController {
@@ -79,7 +79,7 @@ func (a *appController) CloseConnection(c *fiber.Ctx) error {
 		}
 	}
 
-	a.server.webSocketServer.Close(closeReq.Conns, tokens, closeReq.Users, closeReq.UsersWithPublic)
+	a.server.webSocketServer.Close(closeReq.Conns, tokens, closeReq.Users, closeReq.UsersAccessType)
 
 	return c.JSON(fiber.Map{
 		"code":    0,
@@ -114,7 +114,7 @@ func (a *appController) SendMessage(c *fiber.Ctx) error {
 		}
 	}
 
-	a.server.webSocketServer.Push(message.ConnId, tokens, message.Users, message.UsersWithPublic, message.Payload)
+	a.server.webSocketServer.Push(message.ConnId, tokens, message.Users, message.UsersAccessType, message.Payload)
 
 	return c.JSON(fiber.Map{
 		"code":    0,

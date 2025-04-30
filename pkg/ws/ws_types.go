@@ -8,7 +8,7 @@ type CloseMessage struct {
 	ConnIds         []string
 	Tokens          []string
 	Users           []string
-	UsersWithPublic bool `json:"users_with_public"`
+	UsersAccessType int `json:"users_access_type"` // 0 - all; 1 - private; 2 - publics
 }
 
 type ReadMessage struct {
@@ -27,5 +27,5 @@ type WriteMessage struct {
 	ConnId          string      `json:"conn_id"`
 	Tokens          []string    `json:"tokens"`
 	Users           []string    `json:"users"`
-	UsersWithPublic bool        `json:"users_with_public"`
+	UsersAccessType int         `json:"users_access_type"` // 0 - all; 1 - private; 2 - publics
 }

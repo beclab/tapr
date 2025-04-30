@@ -78,8 +78,12 @@ func (f *Filter) FilterByUsers(users []string) *Filter {
 	return f.filter(users, func(field *fields) string { return field.user })
 }
 
-func (f *Filter) FilterByUsersPublicAccess(userPublicAccess []string) *Filter {
-	return f.filter(userPublicAccess, func(field *fields) string { return field.public })
+func (f *Filter) FilterByUsersPublicsOnly() *Filter {
+	return f.filter([]string{"true"}, func(field *fields) string { return field.public })
+}
+
+func (f *Filter) FilterByUsersPrivatesOnly() *Filter {
+	return f.filter([]string{"false"}, func(field *fields) string { return field.public })
 }
 
 func (f *Filter) FilterByTokens(tokens []string) *Filter {
