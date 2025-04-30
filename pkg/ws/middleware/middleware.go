@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"strings"
-
 	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/utils"
 	"github.com/gofiber/contrib/websocket"
@@ -11,16 +9,19 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var accessPublic = func() (string, bool) {
-	var token = uuid.New().String()
-	return token, true
-}
-
 func RequireHeader() func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		if !websocket.IsWebSocketUpgrade(c) {
 			return fiber.ErrUpgradeRequired
 		}
+
+		var accessPublic bool = false
+		var token = c.Cookies("auth_token")
+		if token == "" {
+			token = uuid.New().String()
+			accessPublic = true
+		}
+
 		var headers = c.GetReqHeaders()
 		if headers == nil {
 			return fiber.ErrBadRequest
@@ -28,10 +29,7 @@ func RequireHeader() func(c *fiber.Ctx) error {
 
 		var connId = uuid.New().String()
 
-		// If it's a public environment access, cookie data is invalid, set to anonymous state, making token equal to userName, and also equal to uuid
-
 		var userName = headers[constants.WsHeaderBflUser]
-		var token, accessPublic = GetHeadersUserInfo(headers)
 		var userAgent = headers[constants.WsHeaderUserAgent]
 		var forwarded = headers[constants.WsHeaderForwardeFor]
 		var cookie = headers[constants.WsHeaderCookie]
@@ -54,46 +52,4 @@ func RequireHeader() func(c *fiber.Ctx) error {
 
 		return c.Next()
 	}
-}
-
-func GetHeadersUserInfo(headers map[string]string) (string, bool) {
-	var cookie = headers[constants.WsHeaderCookie]
-
-	if strings.EqualFold(cookie, "") {
-		return accessPublic()
-	}
-
-	var token string
-	var authToken string
-	var items = strings.Split(cookie, ";")
-	if items == nil || len(items) == 0 {
-		return accessPublic()
-	}
-
-	var found bool
-	for _, item := range items {
-		item = strings.TrimSpace(item)
-		if strings.Contains(item, "auth_token=") {
-			found = true
-			authToken = item
-			break
-		}
-	}
-
-	if !found {
-		return accessPublic()
-	}
-
-	var tokensplit = strings.Split(authToken, "=")
-	if tokensplit == nil || len(tokensplit) != 2 {
-		return accessPublic()
-	}
-
-	if tokensplit[1] == "" {
-		return accessPublic()
-	}
-
-	token = tokensplit[1]
-
-	return token, false
 }

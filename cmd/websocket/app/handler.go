@@ -19,10 +19,11 @@ type appController struct {
 }
 
 type sendMesssageReq struct {
-	Payload interface{} `json:"payload"`
-	Users   []string    `json:"users"`
-	Tokens  []string    `json:"tokens"`
-	ConnId  string      `json:"conn_id"`
+	Payload         interface{} `json:"payload"`
+	Users           []string    `json:"users"`
+	UsersWithPublic bool        `json:"users_with_public"`
+	Tokens          []string    `json:"tokens"`
+	ConnId          string      `json:"conn_id"`
 }
 
 type receiveMessageReq struct {
@@ -33,9 +34,10 @@ type receiveMessageReq struct {
 }
 
 type disConnectionReq struct {
-	Conns  []string `json:"conns"`
-	Tokens []string `json:"tokens"`
-	Users  []string `json:"users"`
+	Conns           []string `json:"conns"`
+	Tokens          []string `json:"tokens"`
+	Users           []string `json:"users"`
+	UsersWithPublic bool     `json:"users_with_public"`
 }
 
 func NewController(server *Server) *appController {
@@ -77,7 +79,7 @@ func (a *appController) CloseConnection(c *fiber.Ctx) error {
 		}
 	}
 
-	a.server.webSocketServer.Close(closeReq.Users, tokens, closeReq.Conns)
+	a.server.webSocketServer.Close(closeReq.Conns, tokens, closeReq.Users, closeReq.UsersWithPublic)
 
 	return c.JSON(fiber.Map{
 		"code":    0,
@@ -112,7 +114,7 @@ func (a *appController) SendMessage(c *fiber.Ctx) error {
 		}
 	}
 
-	a.server.webSocketServer.Push(message.ConnId, tokens, message.Users, message.Payload)
+	a.server.webSocketServer.Push(message.ConnId, tokens, message.Users, message.UsersWithPublic, message.Payload)
 
 	return c.JSON(fiber.Map{
 		"code":    0,
