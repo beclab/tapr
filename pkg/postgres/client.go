@@ -328,6 +328,15 @@ func (c *client) CreateOrUpdateUser(ctx context.Context, user, pwd string) error
 		return err
 	}
 
+	sql = fmt.Sprintf("grant pg_write_server_files, pg_read_server_files to %s", user)
+
+	_, err = c.DB.ExecContext(ctx, sql)
+
+	if err != nil {
+		klog.Error("grant role to user error, ", err, ", ", user)
+		return err
+	}
+
 	return nil
 }
 
