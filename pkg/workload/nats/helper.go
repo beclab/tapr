@@ -149,7 +149,7 @@ func getAllowPubSubSubjectFromMR(request *aprv1.MiddlewareRequest, namespace str
 	for _, ref := range req.Refs {
 		for _, subject := range ref.Subjects {
 			if _, ok := appExportMap[request.Spec.App]; !ok {
-				continue
+				return allowPubSubject, allowPubSubject, errors.New("not found export permission")
 			}
 			klog.Infof("request.spec.App: %v", request.Spec.App)
 			ep := appExportMap[request.Spec.App]
@@ -164,7 +164,6 @@ func getAllowPubSubSubjectFromMR(request *aprv1.MiddlewareRequest, namespace str
 				}
 			}
 			if funk.Contains(subject.Perm, "sub") {
-
 				for _, e := range ep {
 					klog.Infof("subject.Name: %v, e.subjectName: %v\n", subject.Name, e.subjectName)
 
@@ -346,7 +345,7 @@ func MakeRealNameForRefSubjectName(refNamespace, app, subject, ownerName string)
 	} else if refNamespace == "os-system" {
 		refAppNs = "os-system"
 	} else {
-		refAppNs = fmt.Sprintf("%s-%s", app, ownerName)
+		refAppNs = refNamespace
 	}
 	return fmt.Sprintf("terminus.%s.%s", refAppNs, subject)
 }
