@@ -47,7 +47,7 @@ func main() {
 	pgBackupController := pgclusterbackup.NewController(config, apiCtx, pgclusterLister)
 	pgRestoreController := pgclusterrestore.NewController(config, apiCtx, pgclusterLister)
 
-	redixClusterController := redixcluster.NewController(config, apiCtx, func(cluster *aprv1.RedixCluster) {})
+	redixClusterController, redixLister := redixcluster.NewController(config, apiCtx, func(cluster *aprv1.RedixCluster) {})
 	kvrocksBackupController := kvrocksbakcup.NewController(config, apiCtx)
 	kvrocksRestoreController := kvrocksrestore.NewController(config, apiCtx)
 
@@ -73,8 +73,11 @@ func main() {
 			runControllers()
 
 			s := &app.Server{
-				Ctx:        apiCtx,
-				KubeConfig: config,
+				Ctx:         apiCtx,
+				KubeConfig:  config,
+				MrLister:    requestLister,
+				PgLister:    pgclusterLister,
+				RedixLister: redixLister,
 			}
 
 			go func() {

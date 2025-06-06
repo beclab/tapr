@@ -1,7 +1,7 @@
 # This file is auto generated from it's template,
 # see citusdata/tools/packaging_automation/templates/docker/latest/latest.tmpl.dockerfile.
-FROM postgres:14.8
-ARG VERSION=12.0.0
+FROM postgres:17.5
+ARG VERSION=13.0.3
 LABEL maintainer="Citus Data https://citusdata.com" \
       org.label-schema.name="Citus" \
       org.label-schema.description="Scalable PostgreSQL for multi-tenant and real-time workloads" \
@@ -19,48 +19,71 @@ RUN apt-get update \
        ca-certificates \
        curl \
        lsb-release \
-       postgresql-14-pgvector 
+       postgresql-17-pgvector 
 
 COPY docker/citus/deb.sh /tmp/deb.sh
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
-    bash /tmp/deb.sh $arch | bash \
-    && apt-get install -y postgresql-$PG_MAJOR-citus-12.0=$CITUS_VERSION \
-                          postgresql-$PG_MAJOR-hll=2.17.citus-1 \
-                          postgresql-$PG_MAJOR-topn=2.5.0.citus-1 
+    curl -sfLO https://repo.pigsty.io/apt/pgsql/bookworm/pool/main/c/citus/postgresql-17-citus_13.0.3-9PIGSTY~bookworm_${arch}.deb && \
+    apt-get install ./postgresql-17-citus_13.0.3-9PIGSTY~bookworm_${arch}.deb && rm postgresql-17-citus_13.0.3-9PIGSTY~bookworm_${arch}.deb
 
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
-    curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.3.0/vectors-pg14_0.3.0_${arch}.deb && \
-    apt-get install ./vectors-pg14_0.3.0_${arch}.deb && rm vectors-pg14_0.3.0_${arch}.deb
+    curl -sfLO https://apt.postgresql.org/pub/repos/apt/pool/main/p/postgresql-hll/postgresql-17-hll_2.18-2.pgdg120+1_${arch}.deb && \
+    apt-get install ./postgresql-17-hll_2.18-2.pgdg120+1_${arch}.deb && rm postgresql-17-hll_2.18-2.pgdg120+1_${arch}.deb
+
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    curl -sfLO https://repo.pigsty.io/apt/pgsql/bookworm/pool/main/t/topn/postgresql-17-topn_2.7.0-1PIGSTY~bookworm_${arch}.deb && \
+    apt-get install ./postgresql-17-topn_2.7.0-1PIGSTY~bookworm_${arch}.deb && rm postgresql-17-topn_2.7.0-1PIGSTY~bookworm_${arch}.deb
+
+    # bash /tmp/deb.sh $arch \
+    # && apt-get install -y postgresql-$PG_MAJOR-citus \
+    #                       postgresql-$PG_MAJOR-hll \
+    #                       postgresql-$PG_MAJOR-topn 
+
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    curl -sfLO https://github.com/tensorchord/pgvecto.rs/releases/download/v0.4.0/vectors-pg17_0.4.0_${arch}.deb && \
+    apt-get install ./vectors-pg17_0.4.0_${arch}.deb && rm vectors-pg17_0.4.0_${arch}.deb
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        build-essential \
-       postgresql-server-dev-14 \
+       postgresql-server-dev-17 \
        lbzip2 \
         && curl -sfLO http://www.xunsearch.com/scws/down/scws-1.2.3.tar.bz2  \
         && tar xf scws-1.2.3.tar.bz2 \
         && cd scws-1.2.3 \
         && ./configure \
         && make install \
-        && cd .. \
-        && curl -sfLO https://github.com/amutu/zhparser/archive/refs/tags/V2.2.tar.gz \
-        && tar xzvf V2.2.tar.gz \
-        && cd zhparser-2.2 \
-        && make \
-        && make install \
-        && cd .. \
+        && echo "/usr/local/lib" | tee /etc/ld.so.conf.d/scws.conf \
+        && ldconfig \
+        && apt-get install -y equivs \
+        && equivs-control scws \
+        && echo "----------------- before -----------------" \
+        && cat scws \
+        && sed -i 's/^# Version:.*/Version: 1.2.3/' scws \
+        && sed -i 's/^Package:.*/Package: scws/' scws \
+        && echo "----------------- after -----------------" \
+        && cat scws \
+        && equivs-build scws \
+        && ls -la *.deb \
+        && dpkg -i scws_1.2.3_all.deb \
         && apt-get install -y locales-all \
         && locale-gen zh_CN.UTF-8 \
-        && apt-get purge -y --auto-remove build-essential postgresql-server-dev-14 libpq-dev \
-        && rm -rf scws-1.2.3.tar.bz2 scws-1.2.3 V2.2.tar.gz zhparser-2.2
+        && apt-get purge -y --auto-remove build-essential postgresql-server-dev-17 libpq-dev \
+        && rm -rf scws-1.2.3.tar.bz2 scws-1.2.3 
 
 
-RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null \
-    && sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' \
-    && apt-get update \
-    && apt-get install -y postgresql-14-postgis-3 \
-    && apt-get purge -y --auto-remove curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    curl -sfLO https://repo.pigsty.io/apt/pgsql/bookworm/pool/main/z/zhparser/postgresql-17-zhparser_2.3-1PIGSTY~bookworm_${arch}.deb && \
+    apt-get install ./postgresql-17-zhparser_2.3-1PIGSTY~bookworm_${arch}.deb && rm postgresql-17-zhparser_2.3-1PIGSTY~bookworm_${arch}.deb
+    
+
+# RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+#     curl -sfLO https://apt.postgresql.org/pub/repos/apt/pool/main/p/postgis/postgresql-17-postgis-3_3.5.2+dfsg-1.pgdg120+1_${arch}.deb && \
+#     curl -sfLO https://apt.postgresql.org/pub/repos/apt/pool/main/p/postgis/postgresql-17-postgis-3-scripts_3.5.2+dfsg-1.pgdg120+1_${arch}.deb && \
+
+RUN apt-get update \
+&& apt-get install -y --no-install-recommends \
+postgresql-17-postgis-3 postgresql-17-postgis-3-scripts 
 
 
 
