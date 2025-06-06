@@ -184,7 +184,8 @@ func (c *controller) processNextWorkItem() bool {
 		for e := c.syncHandler(eobj); e != nil; e = c.syncHandler(eobj) {
 			if eobj.action != DELETE {
 				// Put the item back on the workqueue to handle any transient errors.
-				c.workqueue.AddRateLimited(eobj)
+				//c.workqueue.AddRateLimited(eobj)
+				c.workqueue.AddAfter(eobj, 5*time.Second)
 				return fmt.Errorf("error syncing '%v': %s, requeuing", eobj, e.Error())
 			}
 

@@ -34,7 +34,7 @@ func createOrUpdateUser(request *aprv1.MiddlewareRequest, namespace, password st
 	}
 	allowPubSubject, allowSubSubject, err := getAllowPubSubSubjectFromMR(request, namespace)
 	if err != nil {
-		klog.Info("getAllowPubSubSubjectFromMR, err=%v", err)
+		klog.Infof("getAllowPubSubSubjectFromMR, err=%v", err)
 		return nil, err
 	}
 	req := request.Spec.Nats
@@ -71,7 +71,7 @@ func createOrUpdateUser(request *aprv1.MiddlewareRequest, namespace, password st
 func CreateOrUpdateUser(request *aprv1.MiddlewareRequest, namespace, password string) (*Config, error) {
 	config, err := createOrUpdateUser(request, namespace, password, loadConf)
 	if err != nil {
-		klog.Info("createOrUpdateUser err=%v", err)
+		klog.Infof("createOrUpdateUser err=%v", err)
 		return nil, err
 	}
 	err = RenderConfigFile(config)
@@ -156,22 +156,33 @@ func getAllowPubSubSubjectFromMR(request *aprv1.MiddlewareRequest, namespace str
 			klog.Infof("ep: %#v\n", ep)
 
 			if funk.Contains(subject.Perm, "pub") {
+				getPerm := false
 				for _, e := range ep {
 					klog.Infof("subject.Name: %v, e.subjectName: %v\n", subject.Name, e.subjectName)
 					if subject.Name == e.subjectName && e.pub == Allow {
 						allowPubSubject = append(allowPubSubject, subject.Name)
+						getPerm = true
 					}
 				}
+				if !getPerm {
+					return allowPubSubject, allowPubSubject, fmt.Errorf("not found export permission for subject %s", subject.Name)
+				}
+
 			}
 			if funk.Contains(subject.Perm, "sub") {
+				getPerm := false
 				for _, e := range ep {
 					klog.Infof("subject.Name: %v, e.subjectName: %v\n", subject.Name, e.subjectName)
 
 					if subject.Name == e.subjectName && e.sub == Allow {
 						allowSubSubject = append(allowSubSubject, subject.Name)
-
+						getPerm = true
 					}
 				}
+				if !getPerm {
+					return allowPubSubject, allowPubSubject, fmt.Errorf("not found export permission for subject %s", subject.Name)
+				}
+
 			}
 		}
 	}
