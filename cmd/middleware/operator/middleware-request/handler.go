@@ -65,7 +65,7 @@ func (c *controller) handler(action Action, obj interface{}) error {
 	case aprv1.TypeNats:
 		switch action {
 		case ADD, UPDATE:
-			klog.Infof("create nat user.....")
+			klog.Infof("create nat user name: %s", request.Name)
 			if err := c.createOrUpdateNatsUser(request); err != nil {
 				return err
 			}
