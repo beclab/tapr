@@ -47,18 +47,19 @@ type enqueueObj struct {
 	obj    interface{}
 }
 
-func NewController(kubeConfig *rest.Config, mainCtx context.Context, notifyFn func(cluster *aprv1.RedixCluster)) *controller {
+func NewController(kubeConfig *rest.Config, mainCtx context.Context, notifyFn func(cluster *aprv1.RedixCluster)) (*controller, v1alpha1.RedixClusterLister) {
 	clientset := aprclientset.NewForConfigOrDie(kubeConfig)
 
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
 	informer := informerFactory.Apr().V1alpha1().RedixClusters()
+	lister := informer.Lister()
 
 	ctrlr := &controller{
 		aprClientSet:         clientset,
 		k8sClientSet:         kubernetes.NewForConfigOrDie(kubeConfig),
 		informerFactory:      informerFactory,
 		informer:             informer.Informer(),
-		lister:               informer.Lister(),
+		lister:               lister,
 		synced:               informer.Informer().HasSynced,
 		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "redixcluster"),
 		notifyClusterCreated: notifyFn,
@@ -78,7 +79,7 @@ func NewController(kubeConfig *rest.Config, mainCtx context.Context, notifyFn fu
 	}
 
 	ctrlr.ctx, ctrlr.cancel = context.WithCancel(mainCtx)
-	return ctrlr
+	return ctrlr, lister
 }
 
 func (c *controller) enqueue(obj enqueueObj) {

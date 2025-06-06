@@ -5,6 +5,7 @@ import (
 
 	"bytetrade.io/web3os/tapr/pkg/app/middleware"
 	aprclientset "bytetrade.io/web3os/tapr/pkg/generated/clientset/versioned"
+	"bytetrade.io/web3os/tapr/pkg/generated/listers/apr/v1alpha1"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"k8s.io/client-go/dynamic"
@@ -20,6 +21,9 @@ type Server struct {
 	k8sClientSet  *kubernetes.Clientset
 	aprClientSet  *aprclientset.Clientset
 	dynamicClient *dynamic.DynamicClient
+	MrLister      v1alpha1.MiddlewareRequestLister
+	PgLister      v1alpha1.PGClusterLister
+	RedixLister   v1alpha1.RedixClusterLister
 }
 
 func (s *Server) ServerRun() {

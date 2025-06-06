@@ -11,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 )
 
@@ -22,18 +23,18 @@ func (s *Server) handleGetMiddlewareRequestInfo(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	middlewares, err := s.aprClientSet.AprV1alpha1().MiddlewareRequests(mwReq.Namespace).List(ctx.UserContext(), metav1.ListOptions{})
+	middlewares, err := s.MrLister.MiddlewareRequests(mwReq.Namespace).List(labels.Everything())
 	if err != nil {
 		klog.Error("get middleware list error, ", err)
 		return err
 	}
 
-	for _, m := range middlewares.Items {
+	for _, m := range middlewares {
 		if m.Spec.App == mwReq.App &&
 			m.Spec.AppNamespace == mwReq.AppNamespace &&
 			m.Spec.Middleware == mwReq.Middleware {
 			klog.Info("find middleware request cr")
-			resp, err := s.getMiddlewareInfo(ctx, mwReq, &m)
+			resp, err := s.getMiddlewareInfo(ctx, mwReq, m)
 			if err != nil {
 				return err
 			}
@@ -51,14 +52,14 @@ func (s *Server) handleGetMiddlewareRequestInfo(ctx *fiber.Ctx) error {
 }
 
 func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
-	middlewares, err := s.aprClientSet.AprV1alpha1().MiddlewareRequests("").List(ctx.UserContext(), metav1.ListOptions{})
+	middlewares, err := s.MrLister.List(labels.Everything())
 	if err != nil {
 		klog.Error("get middleware list error, ", err)
 		return err
 	}
 
 	var infos []*MiddlewareRequestInfo
-	for _, m := range middlewares.Items {
+	for _, m := range middlewares {
 		var (
 			user, pwd string
 			err       error
@@ -209,13 +210,13 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 
 	case string(aprv1.TypePostgreSQL):
 		klog.Info("list pg cluster crd")
-		pgcs, err := s.aprClientSet.AprV1alpha1().PGClusters("").List(ctx.UserContext(), metav1.ListOptions{})
+		pgcs, err := s.PgLister.List(labels.Everything())
 		if err != nil {
 			klog.Error("list pg cluster error, ", err)
 			return err
 		}
 
-		for _, pgc := range pgcs.Items {
+		for _, pgc := range pgcs {
 			klog.Info("find pg cluster password")
 			user, pwd, err := citus.GetPGClusterAdminUserAndPassword(ctx.UserContext(), s.aprClientSet, s.k8sClientSet, pgc.Namespace)
 			if err != nil {
