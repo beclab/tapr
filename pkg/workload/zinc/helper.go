@@ -36,7 +36,7 @@ func FindIndexConfig(ctx context.Context, client *kubernetes.Clientset, namespac
 }
 
 func CreateOrUpdateIndex(admin, pwd, namespace, index, schema string) error {
-	host := ZincServerService + "." + constants.SystemNamespace
+	host := ZincServerService + "." + constants.PlatformNamespace
 	endpoint := fmt.Sprintf("http://%s/api/index", host)
 
 	client := resty.New().SetTimeout(2 * time.Second)
@@ -80,7 +80,7 @@ func DeleteIndex(admin, pwd, namespace, index string) error {
 		return errors.New("namespace or index is empty")
 	}
 
-	host := ZincServerService + "." + constants.SystemNamespace
+	host := ZincServerService + "." + constants.PlatformNamespace
 	endpoint := fmt.Sprintf("http://%s/api/index/%s", host, GetIndexName(namespace, index))
 
 	client := resty.New().SetTimeout(2 * time.Second)
@@ -111,7 +111,7 @@ func GetIndexName(namespace, index string) string {
 }
 
 func CreateOrUpdateUser(admin, adminPwd, user, pwd string) error {
-	host := ZincServerService + "." + constants.SystemNamespace
+	host := ZincServerService + "." + constants.PlatformNamespace
 	endpoint := fmt.Sprintf("http://%s/api/user", host)
 
 	client := resty.New().SetTimeout(2 * time.Second)
@@ -150,7 +150,7 @@ func DeleteUser(admin, adminPwd, user string) error {
 		return errors.New("user is empty")
 	}
 
-	host := ZincServerService + "." + constants.SystemNamespace
+	host := ZincServerService + "." + constants.PlatformNamespace
 	endpoint := fmt.Sprintf("http://%s/api/user/%s", host, user)
 
 	client := resty.New().SetTimeout(2 * time.Second)
@@ -177,7 +177,7 @@ func DeleteUser(admin, adminPwd, user string) error {
 }
 
 func InitRole(admin, adminPwd string) error {
-	host := ZincServerService + "." + constants.SystemNamespace
+	host := ZincServerService + "." + constants.PlatformNamespace
 	endpoint := fmt.Sprintf("http://%s/api/role", host)
 
 RETRY:

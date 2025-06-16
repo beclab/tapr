@@ -19,7 +19,7 @@ func (c *controller) reconcileRedisPassword(_ *aprv1.MiddlewareRequest) error {
 
 func (c *controller) createOrUpdateRedixRequest(req *aprv1.MiddlewareRequest, isUpdate bool) error {
 	// assume middleware request in system namespace only currently
-	clusters, err := c.aprClientSet.AprV1alpha1().RedixClusters(constants.SystemNamespace).List(c.ctx, metav1.ListOptions{})
+	clusters, err := c.aprClientSet.AprV1alpha1().RedixClusters(constants.PlatformNamespace).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		klog.Error("find redix cluster error, ", err)
 		return err
@@ -45,7 +45,7 @@ func (c *controller) createOrUpdateRedixRequest(req *aprv1.MiddlewareRequest, is
 
 func (c *controller) deleteRedixRequest(req *aprv1.MiddlewareRequest) error {
 	// assume middleware request in system namespace only currently
-	clusters, err := c.aprClientSet.AprV1alpha1().RedixClusters(constants.SystemNamespace).List(c.ctx, metav1.ListOptions{})
+	clusters, err := c.aprClientSet.AprV1alpha1().RedixClusters(constants.PlatformNamespace).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		klog.Error("find redix cluster error, ", err)
 		return err
