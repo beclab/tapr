@@ -11,6 +11,7 @@ import (
 	"time"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
+	"bytetrade.io/web3os/tapr/pkg/constants"
 	aprclientset "bytetrade.io/web3os/tapr/pkg/generated/clientset/versioned"
 
 	"github.com/nats-io/nats.go"
@@ -199,7 +200,7 @@ func CreateOrUpdateStream(appNamespace, app string) error {
 	if err != nil {
 		return err
 	}
-	nc, err := nats.Connect("nats://nats.os-system", nats.UserInfo("admin", adminPassword))
+	nc, err := nats.Connect("nats://nats."+constants.PlatformNamespace, nats.UserInfo("admin", adminPassword))
 	if err != nil {
 		return err
 	}
@@ -229,7 +230,7 @@ func DeleteStream(appNamespace, app string) error {
 	if err != nil {
 		return err
 	}
-	nc, err := nats.Connect("nats://nats.os-system", nats.UserInfo("admin", adminPassword))
+	nc, err := nats.Connect("nats://nats."+constants.PlatformNamespace, nats.UserInfo("admin", adminPassword))
 	if err != nil {
 		return err
 	}
@@ -329,7 +330,7 @@ func getAdminPassword() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	secret, err := clientSet.CoreV1().Secrets("os-system").Get(context.TODO(), "nats-secrets", metav1.GetOptions{})
+	secret, err := clientSet.CoreV1().Secrets(constants.PlatformNamespace).Get(context.TODO(), "nats-secrets", metav1.GetOptions{})
 	if err != nil {
 		klog.Infof("get secret err=%v", secret)
 		return "", err
@@ -353,8 +354,6 @@ func MakeRealNameForRefSubjectName(refNamespace, app, subject, ownerName string)
 		refAppNs = fmt.Sprintf("user-space-%s", ownerName)
 	} else if strings.HasPrefix(refNamespace, "user-system") {
 		refAppNs = fmt.Sprintf("user-system-%s", ownerName)
-	} else if refNamespace == "os-system" {
-		refAppNs = "os-system"
 	} else {
 		refAppNs = refNamespace
 	}

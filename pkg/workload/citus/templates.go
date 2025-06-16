@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
+	"bytetrade.io/web3os/tapr/pkg/constants"
 
 	appv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -19,7 +20,7 @@ const (
 	CitusHeadlessServiceName = "citus-headless"
 	CitusMasterServiceName   = "citus-master-svc"
 	PGClusterName            = "citus"
-	PGClusterNamespace       = "os-system"
+	PGClusterNamespace       = constants.PlatformNamespace
 	DefaultPGAdminUser       = "terminus"
 	PGClusterBackup          = "citus-backup"
 	PGClusterRestore         = "citus-restore"
