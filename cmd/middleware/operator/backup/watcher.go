@@ -6,6 +6,7 @@ import (
 	"time"
 
 	backupPkg "bytetrade.io/web3os/tapr/pkg/backup"
+	"bytetrade.io/web3os/tapr/pkg/constants"
 	aprclientset "bytetrade.io/web3os/tapr/pkg/generated/clientset/versioned"
 	"bytetrade.io/web3os/tapr/pkg/workload/percona"
 	psmdbv1 "github.com/percona/percona-server-mongodb-operator/pkg/apis/psmdb/v1"
@@ -59,7 +60,7 @@ func (w *Watcher) Start() {
 
 			if backupWatcherRecreate {
 				klog.Info("start to watch velero backup event")
-				backupWatcher, err = w.dynamicClient.Resource(backupPkg.BackupGVR).Namespace("os-system").Watch(w.ctx, metav1.ListOptions{})
+				backupWatcher, err = w.dynamicClient.Resource(backupPkg.BackupGVR).Namespace(constants.FrameworkNamespace).Watch(w.ctx, metav1.ListOptions{})
 				if err != nil {
 					klog.Error("watch backup crd error, ", err)
 					time.Sleep(time.Second)
@@ -72,7 +73,7 @@ func (w *Watcher) Start() {
 
 			if restoreWatcherRecreate {
 				klog.Info("start to watch velero restore event")
-				restoreWatcher, err = w.veleroClient.VeleroV1().Restores("os-system").Watch(w.ctx, metav1.ListOptions{})
+				restoreWatcher, err = w.veleroClient.VeleroV1().Restores(constants.FrameworkNamespace).Watch(w.ctx, metav1.ListOptions{})
 				if err != nil {
 					klog.Error("watch restore crd error, ", err)
 					time.Sleep(time.Second)

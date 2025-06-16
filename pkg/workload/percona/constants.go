@@ -1,6 +1,7 @@
 package percona
 
 import (
+	"bytetrade.io/web3os/tapr/pkg/constants"
 	psmdbv1 "github.com/percona/percona-server-mongodb-operator/pkg/apis/psmdb/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -35,7 +36,7 @@ var (
 
 const (
 	PSMDB_NAME               = "mongo-cluster"
-	PSMDB_NAMESPACE          = "os-system"
+	PSMDB_NAMESPACE          = constants.PlatformNamespace
 	PSMDB_SECRET             = "mdb-cluster-name-secrets"
 	PSMDB_ADMIN_KEY          = "MONGODB_DATABASE_ADMIN_USER"
 	PSMDB_ADMIN_PASSWORD_KEY = "MONGODB_DATABASE_ADMIN_PASSWORD"
