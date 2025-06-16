@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"bytetrade.io/web3os/tapr/pkg/constants"
 	infisical_crypto "bytetrade.io/web3os/tapr/pkg/vault/infisical/crypto"
 	"golang.org/x/crypto/nacl/box"
 	"k8s.io/klog/v2"
@@ -18,7 +19,7 @@ import (
 var (
 	Owner              = ""
 	Org                = ""
-	InfisicalNamespace = "os-system"
+	InfisicalNamespace = constants.FrameworkNamespace
 	InfisicalDBUser    = "infisical"
 	InfisicalDBName    = "infisical"
 	InfisicalDBAddr    = ""

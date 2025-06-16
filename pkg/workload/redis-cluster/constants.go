@@ -1,6 +1,9 @@
 package rediscluster
 
-import "k8s.io/apimachinery/pkg/runtime/schema"
+import (
+	"bytetrade.io/web3os/tapr/pkg/constants"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
 
 const (
 	RedisClusterService     = "redis-cluster-proxy"
@@ -25,6 +28,6 @@ var (
 )
 
 const (
-	REDISCLUSTER_NAMESPACE = "os-system"
+	REDISCLUSTER_NAMESPACE = constants.PlatformNamespace
 	REDISCLUSTER_NAME      = "redis-cluster"
 )

@@ -8,7 +8,8 @@ const (
 	AuthorizationTokenKey       = "X-Authorization"
 	AuthorizationTokenCookieKey = "auth_token"
 
-	SystemNamespace = "os-system"
+	FrameworkNamespace = "os-framework"
+	PlatformNamespace  = "os-platform"
 )
 
 var (
