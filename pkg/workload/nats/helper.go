@@ -195,7 +195,7 @@ func getAllowPubSubSubjectFromMR(request *aprv1.MiddlewareRequest, namespace str
 }
 
 func CreateOrUpdateStream(appNamespace, app string) error {
-	name := fmt.Sprintf("%s-%s", appNamespace, app)
+	//name := fmt.Sprintf("%s-%s", appNamespace, app)
 	adminPassword, err := getAdminPassword()
 	if err != nil {
 		return err
@@ -210,15 +210,16 @@ func CreateOrUpdateStream(appNamespace, app string) error {
 		return err
 	}
 	cfg := jetstream.StreamConfig{
-		Name:     name,
-		Subjects: []string{"terminus.>"},
+		Name:     "os-stream",
+		Subjects: []string{"os.>"},
 		Storage:  jetstream.FileStorage,
-		MaxAge:   15 * 24 * 60 * 60 * time.Second,
+		MaxAge:   24 * 60 * 60 * time.Second,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_, err = js.CreateStream(ctx, cfg)
-	if err != nil && errors.Is(err, jetstream.ErrStreamNameAlreadyInUse) {
+	if err != nil && !errors.Is(err, jetstream.ErrStreamNameAlreadyInUse) {
+		klog.Errorf("create os-stream failed %v", err)
 		return err
 	}
 	return nil
@@ -345,7 +346,7 @@ func getAdminPassword() (string, error) {
 }
 
 func MakeRealSubjectName(subject string, appNamespace string) string {
-	return fmt.Sprintf("terminus.%s.%s", appNamespace, subject)
+	return fmt.Sprintf("%s.%s", appNamespace, subject)
 }
 
 func MakeRealNameForRefSubjectName(refNamespace, app, subject, ownerName string) string {
@@ -357,7 +358,7 @@ func MakeRealNameForRefSubjectName(refNamespace, app, subject, ownerName string)
 	} else {
 		refAppNs = refNamespace
 	}
-	return fmt.Sprintf("terminus.%s.%s", refAppNs, subject)
+	return fmt.Sprintf("%s.%s", refAppNs, subject)
 }
 
 func GetOwnerNameFromNs(ns string) string {
