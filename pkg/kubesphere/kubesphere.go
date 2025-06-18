@@ -116,7 +116,7 @@ func getLLdapJwtKey(ctx context.Context, kubeConfig *rest.Config) ([]byte, error
 		return nil, err
 	}
 
-	secret, err := kubeClientInService.CoreV1().Secrets(constants.FrameworkNamespace).Get(ctx, "lldap-credentials", metav1.GetOptions{})
+	secret, err := kubeClientInService.CoreV1().Secrets(constants.PlatformNamespace).Get(ctx, "lldap-credentials", metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
