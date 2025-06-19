@@ -85,10 +85,12 @@ RUN apt-get update \
 && apt-get install -y --no-install-recommends \
 postgresql-17-postgis-3 postgresql-17-postgis-3-scripts 
 
-
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    curl -sfLO https://github.com/tensorchord/VectorChord/releases/download/0.3.0/postgresql-17-vchord_0.3.0-1_$(dpkg --print-architecture).deb && \
+    apt install ./postgresql-17-vchord_0.3.0-1_$(dpkg --print-architecture).deb && rm postgresql-17-vchord_0.3.0-1_$(dpkg --print-architecture).deb
 
 # add citus to default PostgreSQL config
-RUN echo "shared_preload_libraries='citus,vectors.so'" >> /usr/share/postgresql/postgresql.conf.sample
+RUN echo "shared_preload_libraries='citus,vectors.so,vchord.so'" >> /usr/share/postgresql/postgresql.conf.sample
 
 # add scripts to run after initdb
 COPY docker/citus/001-create-citus-extension.sql /docker-entrypoint-initdb.d/
