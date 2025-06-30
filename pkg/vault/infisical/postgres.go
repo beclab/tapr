@@ -251,7 +251,7 @@ func (c *PostgresClient) GetUser(basectx context.Context, email string) (*UserEn
 		return &user, nil
 	}
 
-	return nil, nil
+	return nil, errors.New("user not found")
 }
 
 func (c *PostgresClient) GetUserTokenSession(basectx context.Context, userId, ip, userAgent string) (*AuthTokenSessionsPG, error) {
