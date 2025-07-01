@@ -169,6 +169,11 @@ func (t *tokenIssuer) getUserFromInfisicalPostgres(ctx context.Context, email st
 		return nil, nil, err
 	}
 
+	if userEnc == nil {
+		klog.Error("get user encrypted key is nil, ", email)
+		return nil, nil, fmt.Errorf("user %s not found", email)
+	}
+
 	session, err := pg.GetUserTokenSession(ctx, userEnc.UserID, "localhost", "tapr-sidecar")
 	if err != nil {
 		klog.Error("get user token session error, ", err)
