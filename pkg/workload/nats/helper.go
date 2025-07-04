@@ -27,6 +27,15 @@ import (
 const ConfPath = "/dbdata/nats_data/config/nats.conf"
 const Allow = "allow"
 
+var (
+	defaultPubPerm = []string{"$JS.API.INFO", "$JS.API.STREAM.NAMES", "$JS.API.CONSUMER.CREATE.>",
+		"_INBOX.>", "$JS.ACK.>", "$SYS.ACCOUNT.*.CONNECT", "$SYS.ACCOUNT.*.DISCONNECT", "$JS.FC.>",
+		"$SYS._INBOX_.>", "$SYS.SERVER.*.CLIENT.AUTH.ERR", "$SYS.REQ.SERVER.PING.>"}
+	defaultSubPerm = []string{"$JS.API.STREAM.NAMES", "$JS.API.CONSUMER.CREATE.>", "_INBOX.>",
+		"$SYS.ACCOUNT.*.CONNECT", "$SYS.ACCOUNT.*.DISCONNECT", "$JS.FC.>", "$SYS._INBOX_.>",
+		"$SYS.SERVER.*.CLIENT.AUTH.ERR", "$SYS.REQ.SERVER.PING.>"}
+)
+
 func createOrUpdateUser(request *aprv1.MiddlewareRequest, namespace, password string, loadConfig func() (*Config, error)) (*Config, error) {
 	encryptedPassword, err := encryptPassword(password)
 
@@ -187,9 +196,12 @@ func getAllowPubSubSubjectFromMR(request *aprv1.MiddlewareRequest, namespace str
 			}
 		}
 	}
-
-	allowPubSubject = append(allowPubSubject, []string{"$JS.API.INFO", "$JS.API.STREAM.NAMES", "$JS.API.CONSUMER.CREATE.>", "_INBOX.>", "$JS.ACK.>"}...)
-	allowSubSubject = append(allowSubSubject, []string{"$JS.API.STREAM.NAMES", "$JS.API.CONSUMER.CREATE.>", "_INBOX.>"}...)
+	if len(allowPubSubject) > 0 {
+		allowPubSubject = append(allowPubSubject, defaultPubPerm...)
+	}
+	if len(allowSubSubject) > 0 {
+		allowSubSubject = append(allowSubSubject, defaultSubPerm...)
+	}
 
 	return allowPubSubject, allowSubSubject, nil
 }
