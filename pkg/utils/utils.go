@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
-	"os"
 )
 
 func MD5(s string) string {
@@ -48,33 +47,4 @@ func AggregateErrs(errs []error) error {
 		}
 		return errors.New(errStr[:len(errStr)-1])
 	}
-}
-
-func CheckDirExist(dirPath string) bool {
-	fi, err := os.Stat(dirPath)
-	return (err == nil || os.IsExist(err)) && fi.IsDir()
-}
-
-func PathExists(path string) bool {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true
-	}
-
-	if os.IsNotExist(err) {
-		return false
-	}
-	return false
-}
-
-func PathExistsAndGetLen(path string) (bool, int64) {
-	info, err := os.Stat(path)
-	if err == nil {
-		return true, info.Size()
-	}
-
-	if os.IsNotExist(err) {
-		return false, 0
-	}
-	return false, 0
 }
