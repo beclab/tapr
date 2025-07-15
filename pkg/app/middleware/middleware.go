@@ -64,7 +64,7 @@ func RequireAdmin(kubeconfig *rest.Config, next func(c *fiber.Ctx) error) func(c
 			})
 		}
 
-		if role != "platform-admin" {
+		if role != "owner" && role != "admin" {
 			return c.JSON(fiber.Map{
 				"code":    http.StatusForbidden,
 				"message": "Must be platform admin",

@@ -64,7 +64,7 @@ func (n *Notification) AdminUser(ctx context.Context) (string, error) {
 
 	for _, user := range list.Items {
 		if role, ok := user.GetAnnotations()["bytetrade.io/owner-role"]; ok {
-			if role == "platform-admin" {
+			if role == "owner" {
 				return user.GetName(), nil
 			}
 		}
