@@ -76,18 +76,22 @@ func (w *Watcher) Run() {
 
 		filteredUsers := make([]string, 0)
 		for _, user := range users.Items {
-			if user.GetAnnotations()["bytetrade.io/owner-role"] != "platform-admin" {
-				filteredUsers = append(filteredUsers, user.GetName())
-				c, _ := resource.ParseQuantity(user.GetAnnotations()["bytetrade.io/user-cpu-limit"])
-				m, _ := resource.ParseQuantity(user.GetAnnotations()["bytetrade.io/user-memory-limit"])
-				userResourceMap[user.GetName()] = UserMetrics{
-					CPU: Value{
-						Total: c.AsApproximateFloat64(),
-					},
-					Memory: Value{
-						Total: m.AsApproximateFloat64(),
-					},
-				}
+			filteredUsers = append(filteredUsers, user.GetName())
+			c, err := resource.ParseQuantity(user.GetAnnotations()["bytetrade.io/user-cpu-limit"])
+			if err != nil {
+				continue
+			}
+			m, err := resource.ParseQuantity(user.GetAnnotations()["bytetrade.io/user-memory-limit"])
+			if err != nil {
+				continue
+			}
+			userResourceMap[user.GetName()] = UserMetrics{
+				CPU: Value{
+					Total: c.AsApproximateFloat64(),
+				},
+				Memory: Value{
+					Total: m.AsApproximateFloat64(),
+				},
 			}
 		}
 
