@@ -76,7 +76,6 @@ func (w *Watcher) Run() {
 
 		filteredUsers := make([]string, 0)
 		for _, user := range users.Items {
-			filteredUsers = append(filteredUsers, user.GetName())
 			c, err := resource.ParseQuantity(user.GetAnnotations()["bytetrade.io/user-cpu-limit"])
 			if err != nil {
 				continue
@@ -93,6 +92,7 @@ func (w *Watcher) Run() {
 					Total: m.AsApproximateFloat64(),
 				},
 			}
+			filteredUsers = append(filteredUsers, user.GetName())
 		}
 
 		for _, username := range filteredUsers {

@@ -44,7 +44,7 @@ func (s *Subscriber) HandleEvent() cache.ResourceEventHandler {
 		FilterFunc: func(obj interface{}) bool {
 			ns, ok := obj.(*corev1.Namespace)
 			if !ok {
-				klog.Error("not naamespace resource, invalid obj")
+				klog.Error("not namespace resource, invalid obj")
 				return false
 			}
 
