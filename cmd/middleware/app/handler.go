@@ -68,7 +68,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 		switch m.Spec.Middleware {
 		case aprv1.TypeMongoDB:
 			user = m.Spec.MongoDB.User
-			pwd, err = m.Spec.MongoDB.Password.GetVarValue(ctx.Context(), s.k8sClientSet, m.Namespace)
+			pwd, err = m.Spec.MongoDB.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
 				klog.Error("get middleware mongo request password error, ", err)
 				return err
