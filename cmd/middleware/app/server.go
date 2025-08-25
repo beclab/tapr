@@ -37,15 +37,15 @@ func (s *Server) ServerRun() {
 	// middleware to allow all clients to communicate using http and allow cors
 	app.Use(cors.New())
 
-	app.Post("/middleware/v1/request/info", middleware.RequireAuth(s.KubeConfig, s.handleGetMiddlewareRequestInfo))
-	app.Get("/middleware/v1/requests", middleware.RequireAuth(s.KubeConfig,
+	app.Post("/middleware/v1/request/info", middleware.GetUserInfo(s.KubeConfig, s.handleGetMiddlewareRequestInfo))
+	app.Get("/middleware/v1/requests", middleware.GetUserInfo(s.KubeConfig,
 		middleware.RequireAdmin(s.KubeConfig, s.handleListMiddlewareRequests)))
 
-	app.Get("/middleware/v1/:middleware/list", middleware.RequireAuth(s.KubeConfig,
+	app.Get("/middleware/v1/:middleware/list", middleware.GetUserInfo(s.KubeConfig,
 		middleware.RequireAdmin(s.KubeConfig, s.handleListMiddlewares)))
-	app.Post("/middleware/v1/:middleware/scale", middleware.RequireAuth(s.KubeConfig,
+	app.Post("/middleware/v1/:middleware/scale", middleware.GetUserInfo(s.KubeConfig,
 		middleware.RequireAdmin(s.KubeConfig, s.handleScaleMiddleware)))
-	app.Post("/middleware/v1/:middleware/password", middleware.RequireAuth(s.KubeConfig,
+	app.Post("/middleware/v1/:middleware/password", middleware.GetUserInfo(s.KubeConfig,
 		middleware.RequireAdmin(s.KubeConfig, s.handleUpdateMiddlewareAdminPassword)))
 
 	s.app = app

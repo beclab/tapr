@@ -68,7 +68,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 		switch m.Spec.Middleware {
 		case aprv1.TypeMongoDB:
 			user = m.Spec.MongoDB.User
-			pwd, err = m.Spec.MongoDB.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			pwd, err = m.Spec.MongoDB.Password.GetVarValue(ctx.Context(), s.k8sClientSet, m.Namespace)
 			if err != nil {
 				klog.Error("get middleware mongo request password error, ", err)
 				return err
@@ -80,7 +80,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 
 		case aprv1.TypePostgreSQL:
 			user = m.Spec.PostgreSQL.User
-			pwd, err = m.Spec.PostgreSQL.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			pwd, err = m.Spec.PostgreSQL.Password.GetVarValue(ctx.Context(), s.k8sClientSet, m.Namespace)
 			if err != nil {
 				klog.Error("get middleware postgres request password error, ", err)
 				return err
@@ -91,7 +91,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			}
 
 		case aprv1.TypeRedis:
-			pwd, err = m.Spec.Redis.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			pwd, err = m.Spec.Redis.Password.GetVarValue(ctx.Context(), s.k8sClientSet, m.Namespace)
 			if err != nil {
 				klog.Error("get middleware redis request password error, ", err)
 				return err
@@ -101,7 +101,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 
 		case aprv1.TypeZinc:
 			user = m.Spec.Zinc.User
-			pwd, err = m.Spec.Zinc.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			pwd, err = m.Spec.Zinc.Password.GetVarValue(ctx.Context(), s.k8sClientSet, m.Namespace)
 			if err != nil {
 				klog.Error("get middleware zinc request password error, ", err)
 				return err
@@ -142,7 +142,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 	switch middleware {
 	case string(aprv1.TypeRedis):
 		klog.Info("list redis cluster crd")
-		drcs, err := rediscluster.ListRedisClusters(ctx.UserContext(), s.dynamicClient, "")
+		drcs, err := rediscluster.ListKvRocks(s.RedixLister)
 		if err != nil {
 			return err
 		}
@@ -154,22 +154,14 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				return err
 			}
 
-			klog.Info("find redis cluster proxy info")
-			port, size, err := rediscluster.FindRedisClusterProxyInfo(ctx.UserContext(), s.k8sClientSet, drc.Namespace)
-			if err != nil {
-				return err
-			}
-
 			cres := MiddlewareClusterResp{
 				MetaInfo: MetaInfo{
 					Name:      drc.Name,
 					Namespace: drc.Namespace,
 				},
 				Password: pwd,
-				Nodes:    drc.Spec.MasterSize,
 				RedisProxy: Proxy{
-					Endpoint: rediscluster.RedisClusterService + "." + drc.Namespace + ":" + strconv.Itoa(int(port)),
-					Size:     size,
+					Endpoint: rediscluster.RedisClusterService + "." + drc.Namespace + ":" + strconv.Itoa(int(6379)),
 				},
 			}
 

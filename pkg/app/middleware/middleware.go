@@ -103,7 +103,7 @@ func GetUserInfo(kubeconfig *rest.Config, next func(c *fiber.Ctx) error) func(c 
 		if userName == "" {
 			return c.JSON(fiber.Map{
 				"code":    http.StatusUnauthorized,
-				"message": fmt.Sprintf("User name not found in header"),
+				"message": "User name not found in header",
 				"data":    nil,
 			})
 		}

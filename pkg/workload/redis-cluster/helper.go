@@ -11,6 +11,7 @@ import (
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	aprclientset "bytetrade.io/web3os/tapr/pkg/generated/clientset/versioned"
+	"bytetrade.io/web3os/tapr/pkg/generated/listers/apr/v1alpha1"
 	"github.com/thoas/go-funk"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -192,6 +193,16 @@ func UpdateRedisClusterDeployment(ctx context.Context, k8sClient *kubernetes.Cli
 	}
 
 	return nil
+}
+
+func ListKvRocks(reidsLister v1alpha1.RedixClusterLister) ([]*aprv1.RedixCluster, error) {
+	list, err := reidsLister.List(labels.Everything())
+	if err != nil {
+		klog.Error("list kvrocks error, ", err)
+		return nil, err
+	}
+
+	return list, nil
 }
 
 func ListRedisClusters(ctx context.Context, dynamicClient *dynamic.DynamicClient, namespace string) ([]*DistributedRedisCluster, error) {
