@@ -80,7 +80,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 
 		case aprv1.TypePostgreSQL:
 			user = m.Spec.PostgreSQL.User
-			pwd, err = m.Spec.PostgreSQL.Password.GetVarValue(ctx.Context(), s.k8sClientSet, m.Namespace)
+			pwd, err = m.Spec.PostgreSQL.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
 				klog.Error("get middleware postgres request password error, ", err)
 				return err
@@ -91,7 +91,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			}
 
 		case aprv1.TypeRedis:
-			pwd, err = m.Spec.Redis.Password.GetVarValue(ctx.Context(), s.k8sClientSet, m.Namespace)
+			pwd, err = m.Spec.Redis.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
 				klog.Error("get middleware redis request password error, ", err)
 				return err
@@ -101,7 +101,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 
 		case aprv1.TypeZinc:
 			user = m.Spec.Zinc.User
-			pwd, err = m.Spec.Zinc.Password.GetVarValue(ctx.Context(), s.k8sClientSet, m.Namespace)
+			pwd, err = m.Spec.Zinc.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
 				klog.Error("get middleware zinc request password error, ", err)
 				return err
