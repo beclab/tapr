@@ -24,23 +24,15 @@ func (s *secretController) CreateSecret(c *fiber.Ctx) error {
 	}
 
 	body := c.Request().Body()
-	var proxy ProxyRequest
-	err := json.Unmarshal(body, &proxy)
+	var secret Secret
+	err := json.Unmarshal(body, &secret)
 	if err != nil {
 		klog.Error("decode request error: ", err)
 		return err
 	}
 
-	op := DecodeOps(proxy.Op)
-	if op.Op != "CreateSecret" {
-		return c.JSON(fiber.Map{
-			"code":    http.StatusBadRequest,
-			"message": "invalid request, illegal op",
-		})
-	}
-
-	reqWorkspaceName, ok := op.Params["workspace"]
-	if !ok {
+	reqWorkspaceName := c.Query("workspace")
+	if reqWorkspaceName == "" {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
 			"message": "invalid request, none of the workspace param",
@@ -81,7 +73,7 @@ func (s *secretController) CreateSecret(c *fiber.Ctx) error {
 
 	err = s.Clientset().CreateSecretInWorkspace(user, token.(string),
 		workspaceId, projectKey,
-		proxy.Data.Name, proxy.Data.Value, proxy.Data.Environment)
+		secret.Name, secret.Value, secret.Environment)
 
 	if err != nil {
 		return c.JSON(fiber.Map{
@@ -100,23 +92,15 @@ func (s *secretController) RetrieveSecret(c *fiber.Ctx) error {
 	}
 
 	body := c.Request().Body()
-	var proxy ProxyRequest
-	err := json.Unmarshal(body, &proxy)
+	var secret Secret
+	err := json.Unmarshal(body, &secret)
 	if err != nil {
 		klog.Error("decode request error: ", err)
 		return err
 	}
 
-	op := DecodeOps(proxy.Op)
-	if op.Op != "RetrieveSecret" {
-		return c.JSON(fiber.Map{
-			"code":    http.StatusBadRequest,
-			"message": "invalid request, illegal op",
-		})
-	}
-
-	reqWorkspaceName, ok := op.Params["workspace"]
-	if !ok {
+	reqWorkspaceName := c.Query("workspace")
+	if reqWorkspaceName == "" {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
 			"message": "invalid request, none of the workspace param",
@@ -146,9 +130,9 @@ func (s *secretController) RetrieveSecret(c *fiber.Ctx) error {
 	}
 
 	var resData Secret
-	resData.Environment = proxy.Data.Environment
+	resData.Environment = secret.Environment
 	resData.Name, resData.Value, err = s.Clientset().GetSecretInWorkspace(token.(string), workspaceId, projectKey,
-		proxy.Data.Environment, proxy.Data.Name)
+		secret.Environment, secret.Name)
 
 	if err != nil {
 		return c.JSON(fiber.Map{
@@ -171,23 +155,15 @@ func (s *secretController) ListSecret(c *fiber.Ctx) error {
 	}
 
 	body := c.Request().Body()
-	var proxy ProxyRequest
-	err := json.Unmarshal(body, &proxy)
+	var secret Secret
+	err := json.Unmarshal(body, &secret)
 	if err != nil {
 		klog.Error("decode request error: ", err)
 		return err
 	}
 
-	op := DecodeOps(proxy.Op)
-	if op.Op != "ListSecret" {
-		return c.JSON(fiber.Map{
-			"code":    http.StatusBadRequest,
-			"message": "invalid request, illegal op",
-		})
-	}
-
-	reqWorkspaceName, ok := op.Params["workspace"]
-	if !ok {
+	reqWorkspaceName := c.Query("workspace")
+	if reqWorkspaceName == "" {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
 			"message": "invalid request, none of the workspace param",
@@ -218,7 +194,7 @@ func (s *secretController) ListSecret(c *fiber.Ctx) error {
 
 	var resData []*Secret
 	list, err := s.Clientset().ListSecretInWorkspace(token.(string), workspaceId, projectKey,
-		proxy.Data.Environment)
+		secret.Environment)
 	if err != nil {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusInternalServerError,
@@ -228,7 +204,7 @@ func (s *secretController) ListSecret(c *fiber.Ctx) error {
 
 	for _, nv := range list {
 		resData = append(resData, &Secret{
-			Environment: proxy.Data.Environment,
+			Environment: secret.Environment,
 			Name:        nv.name,
 			Value:       nv.value,
 		})
@@ -248,23 +224,15 @@ func (s *secretController) DeleteSecret(c *fiber.Ctx) error {
 	}
 
 	body := c.Request().Body()
-	var proxy ProxyRequest
-	err := json.Unmarshal(body, &proxy)
+	var secret Secret
+	err := json.Unmarshal(body, &secret)
 	if err != nil {
 		klog.Error("decode request error: ", err)
 		return err
 	}
 
-	op := DecodeOps(proxy.Op)
-	if op.Op != "DeleteSecret" {
-		return c.JSON(fiber.Map{
-			"code":    http.StatusBadRequest,
-			"message": "invalid request, illegal op",
-		})
-	}
-
-	reqWorkspaceName, ok := op.Params["workspace"]
-	if !ok {
+	reqWorkspaceName := c.Query("workspace")
+	if reqWorkspaceName == "" {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
 			"message": "invalid request, none of the workspace param",
@@ -294,7 +262,7 @@ func (s *secretController) DeleteSecret(c *fiber.Ctx) error {
 	}
 
 	err = s.Clientset().DeleteSecretInWorkspace(token.(string), workspaceId, projectKey,
-		proxy.Data.Environment, proxy.Data.Name)
+		secret.Environment, secret.Name)
 
 	if err != nil {
 		return c.JSON(fiber.Map{
@@ -316,23 +284,15 @@ func (s *secretController) UpdateSecret(c *fiber.Ctx) error {
 	}
 
 	body := c.Request().Body()
-	var proxy ProxyRequest
-	err := json.Unmarshal(body, &proxy)
+	var secret Secret
+	err := json.Unmarshal(body, &secret)
 	if err != nil {
 		klog.Error("decode request error: ", err)
 		return err
 	}
 
-	op := DecodeOps(proxy.Op)
-	if op.Op != "UpdateSecret" {
-		return c.JSON(fiber.Map{
-			"code":    http.StatusBadRequest,
-			"message": "invalid request, illegal op",
-		})
-	}
-
-	reqWorkspaceName, ok := op.Params["workspace"]
-	if !ok {
+	reqWorkspaceName := c.Query("workspace")
+	if reqWorkspaceName == "" {
 		return c.JSON(fiber.Map{
 			"code":    http.StatusBadRequest,
 			"message": "invalid request, none of the workspace param",
@@ -364,7 +324,7 @@ func (s *secretController) UpdateSecret(c *fiber.Ctx) error {
 
 	err = s.Clientset().UpdateSecretInWorkspace(user, token.(string),
 		workspaceId, projectKey,
-		proxy.Data.Name, proxy.Data.Value, proxy.Data.Environment)
+		secret.Name, secret.Value, secret.Environment)
 
 	if err != nil {
 		return c.JSON(fiber.Map{

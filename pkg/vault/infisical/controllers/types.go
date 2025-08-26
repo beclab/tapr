@@ -2,16 +2,6 @@ package controllers
 
 import "strings"
 
-type ProxyRequest struct {
-	Op       string      `json:"op"`
-	DataType string      `json:"datatype"`
-	Version  string      `json:"version"`
-	Group    string      `json:"group"`
-	Param    interface{} `json:"param,omitempty"`
-	Data     *Secret     `json:"data,omitempty"`
-	Token    string
-}
-
 type Secret struct {
 	Name        string `json:"name"`
 	Value       string `json:"value"`

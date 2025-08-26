@@ -31,10 +31,6 @@ func main() {
 	// add event subscriber to watchers
 	watchers.AddToWatchers[apps.Application](w, apps.GVR,
 		(&apps.Subscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).HandleEvent())
-	// watchers.AddToWatchers[login.LoginRecord](w, login.GVR,
-	// 	(&login.Subscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).HandleEvent())
-	// watchers.AddToWatchers[backup.Backup](w, backup.BackupGVR,
-	// (&backupWatcher.Subscriber{Subscriber: watchers.NewSubscriber(w)}).WithKubeConfig(config).HandleEvent())
 	watchers.AddToWatchers[corev1.Namespace](w, corev1.SchemeGroupVersion.WithResource("namespaces"),
 		(&workflows.Subscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).WithKubeConfig(config).HandleEvent())
 

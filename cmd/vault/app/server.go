@@ -81,35 +81,35 @@ func (s *Server) ServerRun() {
 			tokenIssuer.IssueInfisicalToken(routes.PrivateKey)))
 
 	// put secret in workspace
-	app.Post("/secret/create",
+	app.Post("/CreateSecret",
 		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.CreateSecret)))))
 
 	// delete secret in workspace
-	app.Post("/secret/delete",
+	app.Post("/DeleteSecret",
 		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.DeleteSecret)))))
 
 	// update secret in workspace
-	app.Post("/secret/update",
+	app.Post("/UpdateSecret",
 		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.UpdateSecret)))))
 
 	// get secret in workspace
-	app.Post("/secret/retrieve",
+	app.Post("/RetrieveSecret",
 		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
 					controllers.FetchUserOrganizationId(clientSet, routes.RetrieveSecret)))))
 
 	// list secrets in workspace
-	app.Post("/secret/list",
+	app.Post("/ListSecret",
 		middleware.GetUserInfo(s.KubeConfig,
 			tokenIssuer.IssueInfisicalToken(
 				controllers.FetchUserPrivateKey(clientSet,
@@ -180,13 +180,6 @@ func (s *Server) getSecretPwd(ctx context.Context, secretName string, secretKey 
 	pwd = string(secret.Data[secretKey])
 
 	return pwd, nil
-}
-
-func (s *Server) getMongoUserAndPwd(ctx context.Context) (user string, pwd string, err error) {
-	user = infisical.InfisicalDBUser
-	pwd, err = s.getSecretPwd(ctx, "infisical-mongodb", "mongodb-passwords")
-
-	return user, pwd, err
 }
 
 func (s *Server) getPostgresUserAndPwd(ctx context.Context) (user string, pwd string, err error) {
