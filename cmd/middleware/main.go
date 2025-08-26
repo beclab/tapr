@@ -51,8 +51,6 @@ func main() {
 	kvrocksBackupController := kvrocksbakcup.NewController(config, apiCtx)
 	kvrocksRestoreController := kvrocksrestore.NewController(config, apiCtx)
 
-	// backupWatcher := backup.NewWatcher(config, apiCtx)
-
 	runControllers := func() {
 		go func() { utilruntime.Must(pgclusterController.Run(1)) }()
 		go func() { utilruntime.Must(requestController.Run(1)) }()

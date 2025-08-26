@@ -142,7 +142,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 	switch middleware {
 	case string(aprv1.TypeRedis):
 		klog.Info("list redis cluster crd")
-		drcs, err := rediscluster.ListRedisClusters(ctx.UserContext(), s.dynamicClient, "")
+		drcs, err := rediscluster.ListKvRocks(s.RedixLister)
 		if err != nil {
 			return err
 		}
@@ -154,22 +154,14 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				return err
 			}
 
-			klog.Info("find redis cluster proxy info")
-			port, size, err := rediscluster.FindRedisClusterProxyInfo(ctx.UserContext(), s.k8sClientSet, drc.Namespace)
-			if err != nil {
-				return err
-			}
-
 			cres := MiddlewareClusterResp{
 				MetaInfo: MetaInfo{
 					Name:      drc.Name,
 					Namespace: drc.Namespace,
 				},
 				Password: pwd,
-				Nodes:    drc.Spec.MasterSize,
 				RedisProxy: Proxy{
-					Endpoint: rediscluster.RedisClusterService + "." + drc.Namespace + ":" + strconv.Itoa(int(port)),
-					Size:     size,
+					Endpoint: rediscluster.RedisClusterService + "." + drc.Namespace + ":" + strconv.Itoa(int(6379)),
 				},
 			}
 
