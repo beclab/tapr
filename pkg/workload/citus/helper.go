@@ -76,6 +76,7 @@ func GetPGClusterDefineByUser(ctx context.Context, client *kubernetes.Clientset,
 			}
 		}
 	}
+	sts.Spec.Template.Spec.PriorityClassName = "system-cluster-critical"
 
 	return sts, nil
 }
