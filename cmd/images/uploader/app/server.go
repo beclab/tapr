@@ -95,7 +95,7 @@ func (s *Server) handleFileupload(c *fiber.Ctx) error {
 			imageUrl := fmt.Sprintf("https://%s%s", domain, uri)
 
 			if policy == "public" {
-				err := terminus.UpdatePolicy(context.TODO(), uri, "files", "files", token.(string), policy)
+				err := terminus.UpdatePolicy(context.TODO(), uri, "olares-app", "files", token.(string), policy)
 				if err != nil {
 					return "", err
 				}
