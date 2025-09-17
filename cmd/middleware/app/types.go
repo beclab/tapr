@@ -14,6 +14,10 @@ type Database struct {
 	Distributed bool   `json:"distributed,omitempty"`
 }
 
+type Bucket struct {
+	Name string `json:"name"`
+}
+
 type MetaInfo struct {
 	Name      string `json:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
@@ -26,6 +30,7 @@ type MiddlewareRequestInfo struct {
 	Password  string               `json:"password"`
 	Type      aprv1.MiddlewareType `json:"type"`
 	Databases []Database           `json:"databases,omitempty"`
+	Buckets   []Bucket             `json:"buckets,omitempty"`
 }
 
 type MiddlewareRequestResp struct {
@@ -34,6 +39,7 @@ type MiddlewareRequestResp struct {
 	Port      int32             `json:"port"`
 	Indexes   map[string]string `json:"indexes"`
 	Databases map[string]string `json:"databases"`
+	Buckets   map[string]string `json:"buckets"`
 	Subjects  map[string]string `json:"subjects"`
 	Refs      map[string]string `json:"refs"`
 }
@@ -50,6 +56,7 @@ type MiddlewareClusterResp struct {
 	Password   string `json:"password"`
 	Mongos     Proxy  `json:"mongos,omitempty"`
 	RedisProxy Proxy  `json:"redisProxy,omitempty"`
+	Minio      Proxy  `json:"minioProxy,omitempty"`
 }
 
 type ClusterScaleReq struct {

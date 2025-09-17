@@ -1,4 +1,4 @@
-package percona
+package mongodb
 
 import (
 	"context"
@@ -6,53 +6,21 @@ import (
 	"fmt"
 	"time"
 
+	"bytetrade.io/web3os/tapr/pkg/constants"
+
+	kbappsv1 "github.com/apecloud/kubeblocks/apis/apps/v1"
 	psmdbv1 "github.com/percona/percona-server-mongodb-operator/pkg/apis/psmdb/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func ListPerconaMongoCluster(ctx context.Context, dynamicClient dynamic.DynamicClient,
-	namespace string) ([]*psmdbv1.PerconaServerMongoDB, error) {
-	clusters, err := dynamicClient.Resource(PSMDBClassGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		klog.Error("list percona mongo cluster error, ", err)
-		return nil, err
-	}
-
-	var psbdms []*psmdbv1.PerconaServerMongoDB
-	for _, cluster := range clusters.Items {
-		db := psmdbv1.PerconaServerMongoDB{}
-
-		if err = runtime.DefaultUnstructuredConverter.FromUnstructured(cluster.Object, &db); err != nil {
-			klog.Error("convert mongo cluster crd error, ", err, ", ", cluster)
-			return nil, err
-		}
-
-		psbdms = append(psbdms, &db)
-
-	}
-
-	return psbdms, nil
-}
-
-func FindPerconaMongoAdminUser(ctx context.Context, k8sClient *kubernetes.Clientset,
-	namespace string) (user, pwd string, err error) {
-	secret, err := k8sClient.CoreV1().Secrets(namespace).Get(ctx, "mdb-cluster-name-secrets", metav1.GetOptions{})
-	if err != nil {
-		klog.Error("find mongo cluster admin user and password error, ", err)
-		return
-	}
-
-	return string(secret.Data["MONGODB_DATABASE_ADMIN_USER"]), string(secret.Data["MONGODB_DATABASE_ADMIN_PASSWORD"]), nil
-}
 
 func ScalePerconaMongoNodes(ctx context.Context, dynamicClient *dynamic.DynamicClient, name, namespace string, nodes int32) error {
 	cluster, err := dynamicClient.Resource(PSMDBClassGVR).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -365,4 +333,27 @@ func WaitForAllRestoreComplete(ctx context.Context, dynamicClient *dynamic.Dynam
 
 func GetDatabaseName(namespace, db string) string {
 	return fmt.Sprintf("%s_%s", namespace, db)
+}
+
+func ListMongoClusters(ctx context.Context, ctrlClient client.Client, namespace string) (clusters []kbappsv1.Cluster, err error) {
+	var clusterList kbappsv1.ClusterList
+	err = ctrlClient.List(ctx, &clusterList)
+	if err != nil {
+		return nil, err
+	}
+	for _, cluster := range clusterList.Items {
+		if cluster.Labels != nil && cluster.Labels[constants.ClusterDefinitionNameKey] == "mongodb" {
+			clusters = append(clusters, cluster)
+		}
+	}
+	return clusters, nil
+}
+
+func FindMongoAdminUser(ctx context.Context, k8sClient *kubernetes.Clientset, namespace string) (user, password string, err error) {
+	secret, err := k8sClient.CoreV1().Secrets(namespace).Get(ctx, "mongodb-mongodb-account-root", metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("failed to find mongo user and password ")
+		return
+	}
+	return string(secret.Data["username"]), string(secret.Data["password"]), nil
 }

@@ -120,6 +120,9 @@ type MiddlewareSpec struct {
 
 	// +optional
 	Nats Nats `json:"nats,omitempty"`
+
+	// +optional
+	Minio Minio `json:"minio,omitempty"`
 }
 
 type Redis struct {
@@ -152,6 +155,16 @@ type Nats struct {
 	Password PasswordVar `json:"password,omitempty"`
 	Subjects []Subject   `json:"subjects,omitempty"`
 	Refs     []Ref       `json:"refs,omitempty"`
+}
+
+type Minio struct {
+	User     string        `json:"user"`
+	Password PasswordVar   `json:"password,omitempty"`
+	Buckets  []MinioBucket `json:"buckets"`
+}
+
+type MinioBucket struct {
+	Name string `json:"name"`
 }
 
 type Subject struct {
@@ -209,6 +222,7 @@ const (
 	TypeRedis      MiddlewareType = "redis"
 	TypeZinc       MiddlewareType = "zinc"
 	TypeNats       MiddlewareType = "nats"
+	TypeMinio      MiddlewareType = "minio"
 )
 
 func (c *CitusDatabase) IsDistributed() bool { return c.Distributed != nil && *c.Distributed }

@@ -8,7 +8,7 @@ import (
 	backupPkg "bytetrade.io/web3os/tapr/pkg/backup"
 	"bytetrade.io/web3os/tapr/pkg/constants"
 	aprclientset "bytetrade.io/web3os/tapr/pkg/generated/clientset/versioned"
-	"bytetrade.io/web3os/tapr/pkg/workload/percona"
+	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 	psmdbv1 "github.com/percona/percona-server-mongodb-operator/pkg/apis/psmdb/v1"
 	velerov1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	veleroclientset "github.com/vmware-tanzu/velero/pkg/generated/clientset/versioned"
@@ -196,7 +196,7 @@ func (w *Watcher) updateBackupState(backup *backupPkg.Backup, state string, errM
 			return err
 		}
 
-		mb, err := w.dynamicClient.Resource(percona.PSMDBBackupClassGVR).Namespace(backup.Namespace).Get(w.ctx, percona.PerconaMongoClusterBackup, metav1.GetOptions{})
+		mb, err := w.dynamicClient.Resource(mongodb.PSMDBBackupClassGVR).Namespace(backup.Namespace).Get(w.ctx, mongodb.PerconaMongoClusterBackup, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -214,7 +214,7 @@ func (w *Watcher) updateBackupState(backup *backupPkg.Backup, state string, errM
 		if updateBackup.Annotations == nil {
 			updateBackup.Annotations = make(map[string]string)
 		}
-		updateBackup.Annotations[percona.PerconaMongoClusterLastBackupPBMName] = mongoBackup.Status.PBMname
+		updateBackup.Annotations[mongodb.PerconaMongoClusterLastBackupPBMName] = mongoBackup.Status.PBMname
 		updateData, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&updateBackup)
 		if err != nil {
 			klog.Error("convert to unstructured error, ", err, ", ", updateBackup.Name, ", ", updateBackup.Namespace)
@@ -242,7 +242,7 @@ func (w *Watcher) backup() error {
 	}
 
 	runBackup(w.backupRedix)
-	runBackup(w.backupMongo)
+	//runBackup(w.backupMongo)
 	runBackup(w.backupPostgres)
 
 	wg.Wait()

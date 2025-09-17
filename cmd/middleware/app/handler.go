@@ -1,11 +1,12 @@
 package app
 
 import (
+	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 	"strconv"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
-	"bytetrade.io/web3os/tapr/pkg/workload/percona"
+	"bytetrade.io/web3os/tapr/pkg/workload/minio"
 	rediscluster "bytetrade.io/web3os/tapr/pkg/workload/redis-cluster"
 	"bytetrade.io/web3os/tapr/pkg/workload/zinc"
 
@@ -64,6 +65,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			user, pwd string
 			err       error
 			dbs       []Database
+			buckets   []Bucket
 		)
 		switch m.Spec.Middleware {
 		case aprv1.TypeMongoDB:
@@ -111,6 +113,16 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 				dbs = append(dbs, Database{Name: zinc.GetIndexName(m.Spec.AppNamespace, idx.Name)})
 			}
 
+		case aprv1.TypeMinio:
+			user = m.Spec.Minio.User
+			pwd, err = m.Spec.Minio.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				klog.Error("get middleware minio request password error, ", err)
+				return err
+			}
+			for _, b := range m.Spec.Minio.Buckets {
+				buckets = append(buckets, Bucket{Name: b.Name})
+			}
 		}
 		info := &MiddlewareRequestInfo{
 			MetaInfo: MetaInfo{
@@ -124,6 +136,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			UserName:  user,
 			Password:  pwd,
 			Databases: dbs,
+			Buckets:   buckets,
 			Type:      m.Spec.Middleware,
 		}
 
@@ -170,15 +183,14 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 
 	case string(aprv1.TypeMongoDB):
 		klog.Info("list percona mongo cluster crd")
-		mdbs, err := percona.ListPerconaMongoCluster(ctx.UserContext(), *s.dynamicClient, "")
+		mdbs, err := mongodb.ListMongoClusters(ctx.UserContext(), s.ctrlClient, "")
 		if err != nil {
 			return err
 		}
 
-		klog.Info("find mongo cluster proxy ( mongos ) info")
 		for _, mdb := range mdbs {
 			klog.Info("find mongo cluster password")
-			user, pwd, err := percona.FindPerconaMongoAdminUser(ctx.UserContext(), s.k8sClientSet, mdb.Namespace)
+			user, pwd, err := mongodb.FindMongoAdminUser(ctx.UserContext(), s.k8sClientSet, "mongodb-middleware")
 			if err != nil {
 				return err
 			}
@@ -190,10 +202,10 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				},
 				AdminUser: user,
 				Password:  pwd,
-				Nodes:     mdb.Spec.Replsets[0].Size,
+				Nodes:     1,
 				Mongos: Proxy{
-					Endpoint: mdb.Name + "-mongos." + mdb.Namespace + ":" + strconv.Itoa(int(mdb.Spec.Sharding.Mongos.Port)),
-					Size:     mdb.Spec.Sharding.Mongos.Size,
+					Endpoint: mdb.Name + "-mongodb-headless." + mdb.Namespace + ":" + "27017",
+					Size:     1,
 				},
 			}
 
@@ -228,7 +240,31 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 
 			clusterResp = append(clusterResp, &cres)
 		}
-
+	case string(aprv1.TypeMinio):
+		klog.Info("list minio cluster crd")
+		minios, err := minio.ListMinioClusters(ctx.UserContext(), s.ctrlClient, "")
+		if err != nil {
+			return err
+		}
+		for _, m := range minios {
+			user, pwd, err := minio.FindMinioAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Minio: Proxy{
+					Endpoint: m.Name + "-minio-headless." + m.Namespace + ":" + "9000",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
 	default:
 		return fiber.ErrNotFound
 	}
@@ -249,7 +285,7 @@ func (s *Server) handleScaleMiddleware(ctx *fiber.Ctx) error {
 
 	switch scaleReq.Middleware {
 	case aprv1.TypeMongoDB:
-		err = percona.ScalePerconaMongoNodes(ctx.UserContext(), s.dynamicClient, scaleReq.Name, scaleReq.Namespace, scaleReq.Nodes)
+		err = mongodb.ScalePerconaMongoNodes(ctx.UserContext(), s.dynamicClient, scaleReq.Name, scaleReq.Namespace, scaleReq.Nodes)
 		if err != nil {
 			return err
 		}
