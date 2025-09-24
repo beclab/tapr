@@ -5,8 +5,9 @@ import (
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
+	"bytetrade.io/web3os/tapr/pkg/workload/minio"
+	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 	"bytetrade.io/web3os/tapr/pkg/workload/nats"
-	"bytetrade.io/web3os/tapr/pkg/workload/percona"
 	rediscluster "bytetrade.io/web3os/tapr/pkg/workload/redis-cluster"
 	"bytetrade.io/web3os/tapr/pkg/workload/zinc"
 
@@ -78,25 +79,12 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 			return nil, err
 		}
 
-		klog.Info("find percona cluster service, ", percona.PerconaMongoService)
-		svc, err := s.k8sClientSet.CoreV1().Services(mwReq.Namespace).Get(ctx.UserContext(), percona.PerconaMongoService, metav1.GetOptions{})
-		if err != nil {
-			klog.Error("get percona cluster service error, ", err)
-			return nil, err
-		}
-
 		resp.Port = 27017
-		for _, port := range svc.Spec.Ports {
-			if port.Name == percona.PerconaMongoProxy {
-				resp.Port = port.Port
-			}
-		}
-
-		resp.Host = percona.PerconaMongoService + "." + mwReq.Namespace
+		resp.Host = "mongodb-mongodb-headless.mongodb-middleware"
 
 		resp.Databases = make(map[string]string)
 		for _, db := range m.Spec.MongoDB.Databases {
-			resp.Databases[db.Name] = percona.GetDatabaseName(m.Spec.AppNamespace, db.Name)
+			resp.Databases[db.Name] = mongodb.GetDatabaseName(m.Spec.AppNamespace, db.Name)
 		}
 
 		return resp, nil
@@ -161,6 +149,22 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 			}
 		}
 		resp.Refs = appSubjectMap
+		return resp, nil
+	case aprv1.TypeMinio:
+		resp.UserName = m.Spec.Minio.User
+		resp.Password, err = m.Spec.Minio.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, mwReq.Namespace)
+		if err != nil {
+			klog.Error("get middleware minio password error, ", err)
+			return nil, err
+		}
+		resp.Port = 9000
+		resp.Host = "minio-minio-headless.minio-middleware"
+
+		resp.Buckets = make(map[string]string)
+		for _, b := range m.Spec.Minio.Buckets {
+			resp.Buckets[b.Name] = minio.GetBucketName(m.Spec.AppNamespace, b.Name)
+		}
+
 		return resp, nil
 
 	} // end of middleware type

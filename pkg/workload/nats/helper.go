@@ -86,7 +86,7 @@ func CreateOrUpdateUser(request *aprv1.MiddlewareRequest, namespace, password st
 	}
 	err = RenderConfigFile(config)
 	if err != nil {
-		klog.Info("renderConfigFile err=%v", err)
+		klog.Infof("renderConfigFile err=%v", err)
 		return nil, err
 	}
 	return config, nil
@@ -327,7 +327,7 @@ func GetOriginSubjectName(subjectName string) string {
 func newClientSet() (*kubernetes.Clientset, error) {
 	config, err := ctrl.GetConfig()
 	if err != nil {
-		klog.Infof("get config err=%v")
+		klog.Infof("get config err=%v", err)
 		return nil, err
 	}
 	clientSet, err := kubernetes.NewForConfig(config)

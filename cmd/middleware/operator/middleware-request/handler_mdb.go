@@ -2,15 +2,15 @@ package middlewarerequest
 
 import (
 	"errors"
+	"fmt"
 
 	"bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/mongo"
-	"bytetrade.io/web3os/tapr/pkg/workload/percona"
+	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 
-	psmdbv1 "github.com/percona/percona-server-mongodb-operator/pkg/apis/psmdb/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	kbappsv1 "github.com/apecloud/kubeblocks/apis/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 )
 
@@ -22,6 +22,7 @@ func (c *controller) createOrUpdateMDBRequest(req *aprv1.MiddlewareRequest) erro
 
 	client, err := c.connectToCluster(req)
 	if err != nil {
+		klog.Errorf("failed to connect to mongodb cluster %v", err)
 		return err
 	}
 	defer client.Close(c.ctx)
@@ -40,7 +41,7 @@ func (c *controller) deleteMDBRequest(req *aprv1.MiddlewareRequest) error {
 }
 
 func (c *controller) connectToCluster(req *aprv1.MiddlewareRequest) (*mongo.MongoClient, error) {
-	host, err := c.getMongoClusterHost(req)
+	host, err := c.getMongoClusterHost()
 	if err != nil {
 		return nil, err
 	}
@@ -65,44 +66,28 @@ func (c *controller) connectToCluster(req *aprv1.MiddlewareRequest) (*mongo.Mong
 	return client, nil
 }
 
-func (c *controller) getMongoClusterHost(req *aprv1.MiddlewareRequest) (string, error) {
-	psmdb := psmdbv1.PerconaServerMongoDB{}
-	resource, err := c.dynamicClient.Resource(percona.PSMDBClassGVR).Namespace(percona.PSMDB_NAMESPACE).Get(c.ctx, percona.PSMDB_NAME, metav1.GetOptions{})
+func (c *controller) getMongoClusterHost() (string, error) {
+	var cluster kbappsv1.Cluster
+	err := c.ctrlClient.Get(c.ctx, types.NamespacedName{Namespace: "mongodb-middleware", Name: "mongodb"}, &cluster)
 	if err != nil {
-		klog.Error("find user mongo cluster error, ", err, req)
+		klog.Errorf("failed to find mongo cluster %v", err)
 		return "", err
 	}
-
-	if err = runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, &psmdb); err != nil {
-		klog.Error("parse PerconaServerMongoDB error, ", err)
-		return "", err
+	if cluster.Status.Phase != "Running" {
+		return "", errors.New("cluster mongo is not running")
 	}
-
-	if psmdb.Status.Host == "" {
-		return "", errors.New("cluster is not running")
-	}
-
-	return psmdb.Status.Host, nil
+	return fmt.Sprintf("%s-mongodb-headless.%s", cluster.Name, cluster.Namespace), nil
 }
 
 func (c *controller) getMongoClusterAdminUser(req *aprv1.MiddlewareRequest) (user, password string, err error) {
-	secret, err := c.k8sClientSet.CoreV1().Secrets(percona.PSMDB_NAMESPACE).Get(c.ctx, percona.PSMDB_SECRET, metav1.GetOptions{})
-	if err != nil {
-		klog.Error("find mongo cluster admin user error, ", err)
-		return
-	}
-
-	user = string(secret.Data[percona.PSMDB_ADMIN_KEY])
-	password = string(secret.Data[percona.PSMDB_ADMIN_PASSWORD_KEY])
-
-	return
+	return mongodb.FindMongoAdminUser(c.ctx, c.k8sClientSet, "mongodb-middleware")
 }
 
 func dbRealNames(namespace string, dbs []v1alpha1.MongoDatabase) []v1alpha1.MongoDatabase {
 	ret := make([]v1alpha1.MongoDatabase, 0, len(dbs))
 	for _, db := range dbs {
 		ret = append(ret, v1alpha1.MongoDatabase{
-			Name:    percona.GetDatabaseName(namespace, db.Name),
+			Name:    mongodb.GetDatabaseName(namespace, db.Name),
 			Scripts: db.Scripts,
 		})
 	}

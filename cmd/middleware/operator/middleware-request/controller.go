@@ -9,14 +9,18 @@ import (
 	informers "bytetrade.io/web3os/tapr/pkg/generated/informers/externalversions"
 	"bytetrade.io/web3os/tapr/pkg/generated/listers/apr/v1alpha1"
 
+	kbappsv1 "github.com/apecloud/kubeblocks/apis/apps/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const controllerAgentName = "middlewarerequest-controller"
@@ -34,6 +38,13 @@ var (
 	initFunc []func(c *controller)
 )
 
+var rscheme = runtime.NewScheme()
+
+func init() {
+	utilruntime.Must(scheme.AddToScheme(rscheme))
+	utilruntime.Must(kbappsv1.AddToScheme(rscheme))
+}
+
 type controller struct {
 	workqueue       workqueue.RateLimitingInterface
 	informerFactory informers.SharedInformerFactory
@@ -42,6 +53,7 @@ type controller struct {
 	lister          v1alpha1.MiddlewareRequestLister
 	aprClientSet    *aprclientset.Clientset
 	k8sClientSet    *kubernetes.Clientset
+	ctrlClient      client.Client
 	dynamicClient   *dynamic.DynamicClient
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -71,12 +83,19 @@ func NewController(kubeConfig *rest.Config, mainCtx context.Context) (*controlle
 	}
 	ctrlr.ctx, ctrlr.cancel = context.WithCancel(mainCtx)
 
+	ctrlClient, err := client.New(kubeConfig, client.Options{Scheme: rscheme})
+	if err != nil {
+		klog.Errorf("failed to create ctrl client %v", err)
+		panic(err)
+	}
+	ctrlr.ctrlClient = ctrlClient
+
 	klog.Info("run init functions")
 	for _, init := range initFunc {
 		init(ctrlr)
 	}
 
-	_, err := informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: ctrlr.handleAddObject,
 		UpdateFunc: func(old, new interface{}) {
 			ctrlr.handleUpdateObject(new)

@@ -1,4 +1,4 @@
-package percona
+package mongodb
 
 import (
 	"github.com/percona/percona-backup-mongodb/pbm"

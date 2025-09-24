@@ -74,6 +74,20 @@ func (c *controller) handler(action Action, obj interface{}) error {
 				return err
 			}
 		}
+	case aprv1.TypeMinio:
+		switch action {
+		case ADD, UPDATE:
+			klog.Infof("create minio user name: %s", request.Name)
+			if err := c.createOrUpdateMinioRequest(request); err != nil {
+				klog.Errorf("failed to process minio create or update request %v", err)
+				return err
+			}
+		case DELETE:
+			if err := c.deleteMinioRequest(request); err != nil {
+				klog.Errorf("failed to process minio delete request %v", err)
+				return err
+			}
+		}
 	}
 
 	return nil

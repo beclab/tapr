@@ -1,4 +1,4 @@
-package percona
+package mongodb
 
 import (
 	"bytetrade.io/web3os/tapr/pkg/constants"
