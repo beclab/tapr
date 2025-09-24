@@ -121,7 +121,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 				return err
 			}
 			for _, b := range m.Spec.Minio.Buckets {
-				buckets = append(buckets, Bucket{Name: b.Name})
+				buckets = append(buckets, Bucket{Name: minio.GetBucketName(m.Spec.AppNamespace, b.Name)})
 			}
 		}
 		info := &MiddlewareRequestInfo{
