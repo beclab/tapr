@@ -120,6 +120,16 @@ func (c *controller) deleteMinioRequest(req *aprv1.MiddlewareRequest) error {
 		return fmt.Errorf("failed to delete minio user: %w", err)
 	}
 
+	for _, bucket := range req.Spec.Minio.Buckets {
+		bucketName := c.getMinioRealBucketName(req.Spec.AppNamespace, bucket.Name)
+
+		policyName := fmt.Sprintf("%s-policy", bucketName)
+		err = madminClient.RemoveCannedPolicy(c.ctx, policyName)
+		if err != nil {
+			klog.Warning("failed to remove bucket policy", policyName, ": ", err)
+		}
+	}
+
 	return nil
 }
 
@@ -159,7 +169,7 @@ func (c *controller) setBucketPolicyForUser(ctx context.Context, madminClient *m
 			}
 		]
 	}`, bucketName, bucketName)
-	policyName := fmt.Sprintf("%s-policy", username)
+	policyName := fmt.Sprintf("%s-policy", bucketName)
 	err := madminClient.AddCannedPolicy(ctx, policyName, []byte(policy))
 	if err != nil {
 		return fmt.Errorf("failed to set bucket policy: %w", err)
