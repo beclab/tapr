@@ -50,7 +50,7 @@ func (c *controller) createOrUpdateMinioRequest(req *aprv1.MiddlewareRequest) er
 	}
 
 	for _, bucket := range req.Spec.Minio.Buckets {
-		bucketName := c.getMinioRealBucketName(req.Spec.AppNamespace, bucket.Name)
+		bucketName := wminio.GetBucketName(req.Spec.AppNamespace, bucket.Name)
 		klog.Info("create bucket for user, ", bucketName, ", ", req.Spec.Minio.User)
 
 		err = minioClient.MakeBucket(c.ctx, bucketName, minio.MakeBucketOptions{})
@@ -101,7 +101,7 @@ func (c *controller) deleteMinioRequest(req *aprv1.MiddlewareRequest) error {
 	klog.Info("delete minio user and buckets, ", req.Spec.Minio.User)
 
 	for _, bucket := range req.Spec.Minio.Buckets {
-		bucketName := c.getMinioRealBucketName(req.Spec.AppNamespace, bucket.Name)
+		bucketName := wminio.GetBucketName(req.Spec.AppNamespace, bucket.Name)
 		klog.Info("delete bucket, ", bucketName)
 
 		err = c.removeAllObjectsInBucket(c.ctx, minioClient, bucketName)
@@ -121,7 +121,7 @@ func (c *controller) deleteMinioRequest(req *aprv1.MiddlewareRequest) error {
 	}
 
 	for _, bucket := range req.Spec.Minio.Buckets {
-		bucketName := c.getMinioRealBucketName(req.Spec.AppNamespace, bucket.Name)
+		bucketName := wminio.GetBucketName(req.Spec.AppNamespace, bucket.Name)
 
 		policyName := fmt.Sprintf("%s-policy", bucketName)
 		err = madminClient.RemoveCannedPolicy(c.ctx, policyName)
@@ -139,10 +139,6 @@ func (c *controller) findMinioAdminCredentials(namespace string) (string, string
 
 func (c *controller) getMinioEndpoint() (string, error) {
 	return fmt.Sprintf("minio-minio.%s.svc.cluster.local:9000", "minio-middleware"), nil
-}
-
-func (c *controller) getMinioRealBucketName(appNamespace, bucketName string) string {
-	return fmt.Sprintf("%s-%s", appNamespace, bucketName)
 }
 
 func (c *controller) createOrUpdateMinioUser(ctx context.Context, madminClient *madmin.AdminClient, username, password string) error {
