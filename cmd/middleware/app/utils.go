@@ -5,9 +5,11 @@ import (
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
+	"bytetrade.io/web3os/tapr/pkg/workload/elasticsearch"
 	"bytetrade.io/web3os/tapr/pkg/workload/minio"
 	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 	"bytetrade.io/web3os/tapr/pkg/workload/nats"
+	"bytetrade.io/web3os/tapr/pkg/workload/rabbitmq"
 	rediscluster "bytetrade.io/web3os/tapr/pkg/workload/redis-cluster"
 	"bytetrade.io/web3os/tapr/pkg/workload/zinc"
 
@@ -163,6 +165,38 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 		resp.Buckets = make(map[string]string)
 		for _, b := range m.Spec.Minio.Buckets {
 			resp.Buckets[b.Name] = minio.GetBucketName(m.Spec.AppNamespace, b.Name)
+		}
+
+		return resp, nil
+	case aprv1.TypeRabbitMQ:
+		resp.UserName = m.Spec.RabbitMQ.User
+		resp.Password, err = m.Spec.RabbitMQ.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, mwReq.Namespace)
+		if err != nil {
+			klog.Error("get middleware minio password error, ", err)
+			return nil, err
+		}
+		resp.Port = 5672
+		resp.Host = "rabbitmq-rabbitmq-headless.rabbitmq-middleware"
+
+		resp.Vhosts = make(map[string]string)
+		for _, v := range m.Spec.RabbitMQ.Vhosts {
+			resp.Vhosts[v.Name] = rabbitmq.GetVhostName(m.Spec.AppNamespace, v.Name)
+		}
+
+		return resp, nil
+	case aprv1.TypeElasticsearch:
+		resp.UserName = m.Spec.Elasticsearch.User
+		resp.Password, err = m.Spec.Elasticsearch.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, mwReq.Namespace)
+		if err != nil {
+			klog.Error("get middleware es password error, ", err)
+			return nil, err
+		}
+		resp.Port = 9200
+		resp.Host = "elasticsearch-master-http.elasticsearch-middleware"
+
+		resp.Indexes = make(map[string]string)
+		for _, v := range m.Spec.Elasticsearch.Indexes {
+			resp.Indexes[v.Name] = elasticsearch.GetIndexName(m.Spec.AppNamespace, v.Name)
 		}
 
 		return resp, nil

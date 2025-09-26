@@ -18,6 +18,14 @@ type Bucket struct {
 	Name string `json:"name"`
 }
 
+type Vhost struct {
+	Name string `json:"name"`
+}
+
+type Index struct {
+	Name string `json:"name"`
+}
+
 type MetaInfo struct {
 	Name      string `json:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
@@ -31,6 +39,8 @@ type MiddlewareRequestInfo struct {
 	Type      aprv1.MiddlewareType `json:"type"`
 	Databases []Database           `json:"databases,omitempty"`
 	Buckets   []Bucket             `json:"buckets,omitempty"`
+	Indexes   []Index              `json:"indexes,omitempty"`
+	Vhosts    []Vhost              `json:"vhosts,omitempty"`
 }
 
 type MiddlewareRequestResp struct {
@@ -40,6 +50,7 @@ type MiddlewareRequestResp struct {
 	Indexes   map[string]string `json:"indexes"`
 	Databases map[string]string `json:"databases"`
 	Buckets   map[string]string `json:"buckets"`
+	Vhosts    map[string]string `json:"vhosts"`
 	Subjects  map[string]string `json:"subjects"`
 	Refs      map[string]string `json:"refs"`
 }

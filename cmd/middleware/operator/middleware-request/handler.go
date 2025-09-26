@@ -88,6 +88,34 @@ func (c *controller) handler(action Action, obj interface{}) error {
 				return err
 			}
 		}
+	case aprv1.TypeRabbitMQ:
+		switch action {
+		case ADD, UPDATE:
+			klog.Infof("create rabbitmq user name: %s", request.Name)
+			if err := c.createOrUpdateRabbitMQRequest(request); err != nil {
+				klog.Errorf("failed to process rabbitmq create or update request %v", err)
+				return err
+			}
+		case DELETE:
+			if err := c.deleteRabbitMQRequest(request); err != nil {
+				klog.Errorf("failed to process rabbitmq delete request %v", err)
+				return err
+			}
+		}
+	case aprv1.TypeElasticsearch:
+		switch action {
+		case ADD, UPDATE:
+			klog.Infof("create elasticsearch user name: %s", request.Name)
+			if err := c.createOrUpdateElasticsearchRequest(request); err != nil {
+				klog.Errorf("failed to process elasticsearch create or update request %v", err)
+				return err
+			}
+		case DELETE:
+			if err := c.deleteElasticsearchRequest(request); err != nil {
+				klog.Errorf("failed to process elasticsearch delete request %v", err)
+				return err
+			}
+		}
 	}
 
 	return nil
