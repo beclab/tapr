@@ -342,7 +342,7 @@ func ListMongoClusters(ctx context.Context, ctrlClient client.Client, namespace 
 		return nil, err
 	}
 	for _, cluster := range clusterList.Items {
-		if cluster.Labels != nil && cluster.Labels[constants.ClusterDefinitionNameKey] == "mongodb" {
+		if cluster.Labels != nil && cluster.Labels[constants.ClusterInstanceNameKey] == "mongodb" {
 			clusters = append(clusters, cluster)
 		}
 	}

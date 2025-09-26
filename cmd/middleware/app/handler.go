@@ -1,12 +1,14 @@
 package app
 
 import (
-	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 	"strconv"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
+	"bytetrade.io/web3os/tapr/pkg/workload/elasticsearch"
 	"bytetrade.io/web3os/tapr/pkg/workload/minio"
+	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
+	"bytetrade.io/web3os/tapr/pkg/workload/rabbitmq"
 	rediscluster "bytetrade.io/web3os/tapr/pkg/workload/redis-cluster"
 	"bytetrade.io/web3os/tapr/pkg/workload/zinc"
 
@@ -66,6 +68,8 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			err       error
 			dbs       []Database
 			buckets   []Bucket
+			vhosts    []Vhost
+			indexes   []Index
 		)
 		switch m.Spec.Middleware {
 		case aprv1.TypeMongoDB:
@@ -123,6 +127,26 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			for _, b := range m.Spec.Minio.Buckets {
 				buckets = append(buckets, Bucket{Name: minio.GetBucketName(m.Spec.AppNamespace, b.Name)})
 			}
+		case aprv1.TypeRabbitMQ:
+			user = m.Spec.RabbitMQ.User
+			pwd, err = m.Spec.RabbitMQ.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				klog.Error("get middleware rabbitmq request password error, ", err)
+				return err
+			}
+			for _, b := range m.Spec.RabbitMQ.Vhosts {
+				vhosts = append(vhosts, Vhost{Name: rabbitmq.GetVhostName(m.Spec.AppNamespace, b.Name)})
+			}
+		case aprv1.TypeElasticsearch:
+			user = m.Spec.Elasticsearch.User
+			pwd, err = m.Spec.Elasticsearch.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				klog.Error("get middleware elasticsearch request password error, ", err)
+				return err
+			}
+			for _, b := range m.Spec.Elasticsearch.Indexes {
+				indexes = append(indexes, Index{Name: elasticsearch.GetIndexName(m.Spec.AppNamespace, b.Name)})
+			}
 		}
 		info := &MiddlewareRequestInfo{
 			MetaInfo: MetaInfo{
@@ -137,6 +161,8 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			Password:  pwd,
 			Databases: dbs,
 			Buckets:   buckets,
+			Vhosts:    vhosts,
+			Indexes:   indexes,
 			Type:      m.Spec.Middleware,
 		}
 
@@ -260,6 +286,56 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				Password:  pwd,
 				Minio: Proxy{
 					Endpoint: m.Name + "-minio-headless." + m.Namespace + ":" + "9000",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	case string(aprv1.TypeRabbitMQ):
+		klog.Info("list rabbitmq cluster crd")
+		rabbitmqs, err := rabbitmq.ListRabbitMQClusters(ctx.UserContext(), s.ctrlClient, "")
+		if err != nil {
+			return err
+		}
+		for _, m := range rabbitmqs {
+			user, pwd, err := rabbitmq.FindRabbitMQAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Minio: Proxy{
+					Endpoint: m.Name + "-rabbitmq-headless." + m.Namespace + ":" + "5672",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	case string(aprv1.TypeElasticsearch):
+		klog.Info("list elasticsearch cluster crd")
+		rabbitmqs, err := rabbitmq.ListRabbitMQClusters(ctx.UserContext(), s.ctrlClient, "")
+		if err != nil {
+			return err
+		}
+		for _, m := range rabbitmqs {
+			user, pwd, err := elasticsearch.FindElasticsearchAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Minio: Proxy{
+					Endpoint: m.Name + "-master-http." + m.Namespace + ":" + "9200",
 					Size:     m.Spec.ComponentSpecs[0].Replicas,
 				},
 			}

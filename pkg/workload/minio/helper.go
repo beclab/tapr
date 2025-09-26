@@ -20,7 +20,7 @@ func ListMinioClusters(ctx context.Context, ctrlClient client.Client, namespace 
 		return nil, err
 	}
 	for _, cluster := range clusterList.Items {
-		if cluster.Labels != nil && cluster.Labels[constants.ClusterDefinitionNameKey] == "minio" {
+		if cluster.Labels != nil && cluster.Labels[constants.ClusterInstanceNameKey] == "minio" {
 			clusters = append(clusters, cluster)
 		}
 	}

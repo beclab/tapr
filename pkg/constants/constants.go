@@ -11,7 +11,7 @@ const (
 	FrameworkNamespace = "os-framework"
 	PlatformNamespace  = "os-platform"
 
-	ClusterDefinitionNameKey = "clusterdefinition.kubeblocks.io/name"
+	ClusterInstanceNameKey = "app.kubernetes.io/instance"
 )
 
 var (

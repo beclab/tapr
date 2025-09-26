@@ -123,6 +123,12 @@ type MiddlewareSpec struct {
 
 	// +optional
 	Minio Minio `json:"minio,omitempty"`
+
+	// +optional
+	RabbitMQ RabbitMQ `json:"rabbitmq,omitempty"`
+
+	// +optional
+	Elasticsearch Elasticsearch `json:"elasticsearch,omitempty"`
 }
 
 type Redis struct {
@@ -164,6 +170,26 @@ type Minio struct {
 }
 
 type MinioBucket struct {
+	Name string `json:"name"`
+}
+
+type RabbitMQ struct {
+	User     string          `json:"user"`
+	Password PasswordVar     `json:"password,omitempty"`
+	Vhosts   []RabbitMQVhost `json:"vhosts"`
+}
+
+type RabbitMQVhost struct {
+	Name string `json:"name"`
+}
+
+type Elasticsearch struct {
+	User     string               `json:"user"`
+	Password PasswordVar          `json:"password,omitempty"`
+	Indexes  []ElasticsearchIndex `json:"indexes"`
+}
+
+type ElasticsearchIndex struct {
 	Name string `json:"name"`
 }
 
@@ -217,12 +243,14 @@ type ZincIndexConfig struct {
 type MiddlewareType string
 
 const (
-	TypePostgreSQL MiddlewareType = "postgres"
-	TypeMongoDB    MiddlewareType = "mongodb"
-	TypeRedis      MiddlewareType = "redis"
-	TypeZinc       MiddlewareType = "zinc"
-	TypeNats       MiddlewareType = "nats"
-	TypeMinio      MiddlewareType = "minio"
+	TypePostgreSQL    MiddlewareType = "postgres"
+	TypeMongoDB       MiddlewareType = "mongodb"
+	TypeRedis         MiddlewareType = "redis"
+	TypeZinc          MiddlewareType = "zinc"
+	TypeNats          MiddlewareType = "nats"
+	TypeMinio         MiddlewareType = "minio"
+	TypeRabbitMQ      MiddlewareType = "rabbitmq"
+	TypeElasticsearch MiddlewareType = "elasticsearch"
 )
 
 func (c *CitusDatabase) IsDistributed() bool { return c.Distributed != nil && *c.Distributed }
