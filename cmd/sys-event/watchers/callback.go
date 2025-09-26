@@ -1,15 +1,9 @@
 package watchers
 
 import (
-	"bytes"
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
-	"strconv"
 	"time"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
@@ -53,10 +47,6 @@ func (s *CallbackInvoker) Invoke(ctx context.Context, filter func(cb *aprv1.SysE
 			}
 
 			retriable := func(e error) bool {
-				if e == errNonce {
-					return false
-				}
-
 				return s.Retriable(e)
 			}
 
@@ -77,15 +67,10 @@ func (s *CallbackInvoker) Invoke(ctx context.Context, filter func(cb *aprv1.SysE
 
 func (s *CallbackInvoker) sendEvent(ctx context.Context, cb *aprv1.SysEventRegistry, data interface{}) error {
 	client := resty.New().SetTimeout(2 * time.Minute)
-	nonce, err := genTerminusNonce()
-	if err != nil {
-		klog.Error("get nonce error, ", err)
-		return errNonce
-	}
 
+	// TODO: invoke with auth if callback url is in the user space
 	res, err := client.R().
 		SetHeader(restful.HEADER_ContentType, restful.MIME_JSON).
-		SetHeader("Terminus-Nonce", nonce).
 		SetBody(data).
 		Post(cb.Spec.Callback)
 
@@ -105,45 +90,4 @@ func (s *CallbackInvoker) sendEvent(ctx context.Context, cb *aprv1.SysEventRegis
 	klog.Info("success to invoke callback, ", cb.Name, ", ", cb.Namespace, ", ", string(res.Body()))
 
 	return nil
-}
-
-var errNonce = errors.New("get terminus nonce err")
-
-func getTimestamp() string {
-	t := time.Now().Unix()
-	return strconv.Itoa(int(t))
-}
-
-func genTerminusNonce() (string, error) {
-	randomKey := os.Getenv("APP_RANDOM_KEY")
-	if randomKey == "" {
-		return "", nil
-	}
-	timestamp := getTimestamp()
-	cipherText, err := aesEncrypt([]byte(timestamp), []byte(randomKey))
-	if err != nil {
-		return "", err
-	}
-	b64CipherText := base64.StdEncoding.EncodeToString(cipherText)
-	terminusNonce := "appservice:" + b64CipherText
-	return terminusNonce, nil
-}
-
-func aesEncrypt(origin, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	blockSize := block.BlockSize()
-	origin = PKCS7Padding(origin, blockSize)
-	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
-	crypted := make([]byte, len(origin))
-	blockMode.CryptBlocks(crypted, origin)
-	return crypted, nil
-}
-
-func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
-	padding := blockSize - len(ciphertext)%blockSize
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(ciphertext, padtext...)
 }
