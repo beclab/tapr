@@ -10,6 +10,7 @@ const (
 
 	FrameworkNamespace = "os-framework"
 	PlatformNamespace  = "os-platform"
+	ProtectedNamespace = "os-protected"
 
 	ClusterInstanceNameKey = "app.kubernetes.io/instance"
 )

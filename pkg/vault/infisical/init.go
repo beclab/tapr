@@ -19,7 +19,7 @@ import (
 var (
 	Owner              = ""
 	Org                = ""
-	InfisicalNamespace = constants.FrameworkNamespace
+	InfisicalNamespace = constants.ProtectedNamespace
 	InfisicalDBUser    = "infisical"
 	InfisicalDBName    = "infisical"
 	InfisicalDBAddr    = ""
