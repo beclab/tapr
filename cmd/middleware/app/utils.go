@@ -6,6 +6,7 @@ import (
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
 	"bytetrade.io/web3os/tapr/pkg/workload/elasticsearch"
+	"bytetrade.io/web3os/tapr/pkg/workload/mariadb"
 	"bytetrade.io/web3os/tapr/pkg/workload/minio"
 	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 	"bytetrade.io/web3os/tapr/pkg/workload/nats"
@@ -192,11 +193,27 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 			return nil, err
 		}
 		resp.Port = 9200
-		resp.Host = "elasticsearch-master-http.elasticsearch-middleware"
+		resp.Host = "elasticsearch-mdit-http.elasticsearch-middleware"
 
 		resp.Indexes = make(map[string]string)
 		for _, v := range m.Spec.Elasticsearch.Indexes {
 			resp.Indexes[v.Name] = elasticsearch.GetIndexName(m.Spec.AppNamespace, v.Name)
+		}
+
+		return resp, nil
+	case aprv1.TypeMariaDB:
+		resp.UserName = m.Spec.MariaDB.User
+		resp.Password, err = m.Spec.MariaDB.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, mwReq.Namespace)
+		if err != nil {
+			klog.Error("get middleware mariadb password error, ", err)
+			return nil, err
+		}
+		resp.Port = 3306
+		resp.Host = "mariadb-mariadb-headless.mariadb-middleware"
+
+		resp.Databases = make(map[string]string)
+		for _, v := range m.Spec.MariaDB.Databases {
+			resp.Databases[v.Name] = mariadb.GetDatabaseName(m.Spec.AppNamespace, v.Name)
 		}
 
 		return resp, nil

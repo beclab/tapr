@@ -6,6 +6,7 @@ import (
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
 	"bytetrade.io/web3os/tapr/pkg/workload/elasticsearch"
+	"bytetrade.io/web3os/tapr/pkg/workload/mariadb"
 	"bytetrade.io/web3os/tapr/pkg/workload/minio"
 	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 	"bytetrade.io/web3os/tapr/pkg/workload/rabbitmq"
@@ -336,6 +337,31 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				Password:  pwd,
 				Minio: Proxy{
 					Endpoint: m.Name + "-master-http." + m.Namespace + ":" + "9200",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	case string(aprv1.TypeMariaDB):
+		klog.Info("list mariadb cluster crd")
+		mdbs, err := mariadb.ListMariadbClusters(ctx.UserContext(), s.ctrlClient, "")
+		if err != nil {
+			return err
+		}
+		for _, m := range mdbs {
+			user, pwd, err := mariadb.FindMariaDBAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Minio: Proxy{
+					Endpoint: m.Name + "-mariadb-headless." + m.Namespace + ":" + "3306",
 					Size:     m.Spec.ComponentSpecs[0].Replicas,
 				},
 			}

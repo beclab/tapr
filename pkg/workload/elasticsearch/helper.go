@@ -27,7 +27,7 @@ func ListRabbitMQClusters(ctx context.Context, ctrlClient client.Client, namespa
 }
 
 func FindElasticsearchAdminUser(ctx context.Context, k8sClient *kubernetes.Clientset, namespace string) (user, password string, err error) {
-	secret, err := k8sClient.CoreV1().Secrets(namespace).Get(ctx, "elasticsearch-master-account-elastic", metav1.GetOptions{})
+	secret, err := k8sClient.CoreV1().Secrets(namespace).Get(ctx, "elasticsearch-mdit-account-elastic", metav1.GetOptions{})
 	if err != nil {
 		return "", "", err
 	}

@@ -95,7 +95,7 @@ func (c *controller) deleteElasticsearchRequest(req *aprv1.MiddlewareRequest) er
 }
 
 func (c *controller) getElasticsearchEndpoint() string {
-	return fmt.Sprintf("https://elasticsearch-master-http.%s:9200", elasticNamespace)
+	return fmt.Sprintf("https://elasticsearch-mdit-http.%s:9200", elasticNamespace)
 }
 
 func newESClient(endpoint, username, password string) (*elastic.Client, error) {

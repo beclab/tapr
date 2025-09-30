@@ -116,6 +116,20 @@ func (c *controller) handler(action Action, obj interface{}) error {
 				return err
 			}
 		}
+	case aprv1.TypeMariaDB:
+		switch action {
+		case ADD, UPDATE:
+			klog.Infof("create mariadb user name: %s", request.Name)
+			if err := c.createOrUpdateMariaDBRequest(request); err != nil {
+				klog.Errorf("failed to process mariadb create or update request %v", err)
+				return err
+			}
+		case DELETE:
+			if err := c.deleteMariaDBRequest(request); err != nil {
+				klog.Errorf("failed to process mariadb delete request %v", err)
+				return err
+			}
+		}
 	}
 
 	return nil

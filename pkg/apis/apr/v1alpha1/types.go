@@ -129,6 +129,9 @@ type MiddlewareSpec struct {
 
 	// +optional
 	Elasticsearch Elasticsearch `json:"elasticsearch,omitempty"`
+
+	// +optional
+	MariaDB MariaDB `json:"mariadb,omitempty"`
 }
 
 type Redis struct {
@@ -193,6 +196,16 @@ type ElasticsearchIndex struct {
 	Name string `json:"name"`
 }
 
+type MariaDB struct {
+	User      string          `json:"user"`
+	Password  PasswordVar     `json:"password,omitempty"`
+	Databases []MariaDatabase `json:"databases"`
+}
+
+type MariaDatabase struct {
+	Name string `json:"name"`
+}
+
 type Subject struct {
 	Name string `json:"name"`
 	//// default allow for appName equals spec.App, others is deny
@@ -251,6 +264,7 @@ const (
 	TypeMinio         MiddlewareType = "minio"
 	TypeRabbitMQ      MiddlewareType = "rabbitmq"
 	TypeElasticsearch MiddlewareType = "elasticsearch"
+	TypeMariaDB       MiddlewareType = "mariadb"
 )
 
 func (c *CitusDatabase) IsDistributed() bool { return c.Distributed != nil && *c.Distributed }
