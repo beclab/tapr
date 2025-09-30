@@ -67,7 +67,7 @@ type MiddlewareClusterResp struct {
 	Password   string `json:"password"`
 	Mongos     Proxy  `json:"mongos,omitempty"`
 	RedisProxy Proxy  `json:"redisProxy,omitempty"`
-	Minio      Proxy  `json:"minioProxy,omitempty"`
+	Proxy      Proxy  `json:"proxy,omitempty"`
 }
 
 type ClusterScaleReq struct {
