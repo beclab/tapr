@@ -285,7 +285,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				},
 				AdminUser: user,
 				Password:  pwd,
-				Minio: Proxy{
+				Proxy: Proxy{
 					Endpoint: m.Name + "-minio-headless." + m.Namespace + ":" + "9000",
 					Size:     m.Spec.ComponentSpecs[0].Replicas,
 				},
@@ -310,7 +310,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				},
 				AdminUser: user,
 				Password:  pwd,
-				Minio: Proxy{
+				Proxy: Proxy{
 					Endpoint: m.Name + "-rabbitmq-headless." + m.Namespace + ":" + "5672",
 					Size:     m.Spec.ComponentSpecs[0].Replicas,
 				},
@@ -335,8 +335,8 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				},
 				AdminUser: user,
 				Password:  pwd,
-				Minio: Proxy{
-					Endpoint: m.Name + "-master-http." + m.Namespace + ":" + "9200",
+				Proxy: Proxy{
+					Endpoint: m.Name + "-mdit-http." + m.Namespace + ":" + "9200",
 					Size:     m.Spec.ComponentSpecs[0].Replicas,
 				},
 			}
@@ -360,7 +360,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				},
 				AdminUser: user,
 				Password:  pwd,
-				Minio: Proxy{
+				Proxy: Proxy{
 					Endpoint: m.Name + "-mariadb-headless." + m.Namespace + ":" + "3306",
 					Size:     m.Spec.ComponentSpecs[0].Replicas,
 				},
