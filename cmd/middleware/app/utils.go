@@ -217,6 +217,22 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 		}
 
 		return resp, nil
+	case aprv1.TypeMysql:
+		resp.UserName = m.Spec.Mysql.User
+		resp.Password, err = m.Spec.Mysql.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, mwReq.Namespace)
+		if err != nil {
+			klog.Error("get middleware mariadb password error, ", err)
+			return nil, err
+		}
+		resp.Port = 3306
+		resp.Host = "mysql-mysql-headless.mysql-middleware"
+
+		resp.Databases = make(map[string]string)
+		for _, v := range m.Spec.Mysql.Databases {
+			resp.Databases[v.Name] = mariadb.GetDatabaseName(m.Spec.AppNamespace, v.Name)
+		}
+
+		return resp, nil
 
 	} // end of middleware type
 

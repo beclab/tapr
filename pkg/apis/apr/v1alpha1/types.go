@@ -132,6 +132,9 @@ type MiddlewareSpec struct {
 
 	// +optional
 	MariaDB MariaDB `json:"mariadb,omitempty"`
+
+	// +optional
+	Mysql Mysql `json:"mysql,omitempty"`
 }
 
 type Redis struct {
@@ -202,6 +205,16 @@ type MariaDB struct {
 	Databases []MariaDatabase `json:"databases"`
 }
 
+type Mysql struct {
+	User      string          `json:"user"`
+	Password  PasswordVar     `json:"password,omitempty"`
+	Databases []MysqlDatabase `json:"databases"`
+}
+
+type MysqlDatabase struct {
+	Name string `json:"name"`
+}
+
 type MariaDatabase struct {
 	Name string `json:"name"`
 }
@@ -265,6 +278,7 @@ const (
 	TypeRabbitMQ      MiddlewareType = "rabbitmq"
 	TypeElasticsearch MiddlewareType = "elasticsearch"
 	TypeMariaDB       MiddlewareType = "mariadb"
+	TypeMysql         MiddlewareType = "mysql"
 )
 
 func (c *CitusDatabase) IsDistributed() bool { return c.Distributed != nil && *c.Distributed }
