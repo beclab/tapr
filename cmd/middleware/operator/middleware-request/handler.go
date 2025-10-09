@@ -130,6 +130,20 @@ func (c *controller) handler(action Action, obj interface{}) error {
 				return err
 			}
 		}
+	case aprv1.TypeMysql:
+		switch action {
+		case ADD, UPDATE:
+			klog.Infof("create mysql user name: %s", request.Name)
+			if err := c.createOrUpdateMysqlRequest(request); err != nil {
+				klog.Errorf("failed to process mysql create or update request %v", err)
+				return err
+			}
+		case DELETE:
+			if err := c.deleteMysqlRequest(request); err != nil {
+				klog.Errorf("failed to process mysql delete request %v", err)
+				return err
+			}
+		}
 	}
 
 	return nil
