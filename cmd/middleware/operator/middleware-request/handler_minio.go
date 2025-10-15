@@ -2,6 +2,7 @@ package middlewarerequest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
@@ -49,10 +50,11 @@ func (c *controller) createOrUpdateMinioRequest(req *aprv1.MiddlewareRequest) er
 		return fmt.Errorf("failed to create or update minio user: %w", err)
 	}
 
+	bucketList := make([]string, 0, len(req.Spec.Minio.Buckets))
 	for _, bucket := range req.Spec.Minio.Buckets {
 		bucketName := wminio.GetBucketName(req.Spec.AppNamespace, bucket.Name)
 		klog.Info("create bucket for user, ", bucketName, ", ", req.Spec.Minio.User)
-
+		bucketList = append(bucketList, bucketName)
 		err = minioClient.MakeBucket(c.ctx, bucketName, minio.MakeBucketOptions{})
 		if err != nil {
 			exists, errBucketExists := minioClient.BucketExists(c.ctx, bucketName)
@@ -64,12 +66,11 @@ func (c *controller) createOrUpdateMinioRequest(req *aprv1.MiddlewareRequest) er
 			}
 			klog.Info("bucket already exists, ", bucketName)
 		}
+	}
 
-		err = c.setBucketPolicyForUser(c.ctx, madminClient, bucketName, req.Spec.Minio.User)
-		if err != nil {
-			return fmt.Errorf("failed to set bucket policy: %w", err)
-		}
-
+	err = c.setBucketPolicyForUser(c.ctx, madminClient, bucketList, req.Spec.Minio.User)
+	if err != nil {
+		return fmt.Errorf("failed to set bucket policy: %w", err)
 	}
 
 	return nil
@@ -151,31 +152,44 @@ func (c *controller) createOrUpdateMinioUser(ctx context.Context, madminClient *
 	return nil
 }
 
-func (c *controller) setBucketPolicyForUser(ctx context.Context, madminClient *madmin.AdminClient, bucketName, username string) error {
-	policy := fmt.Sprintf(`{
-		"Version": "2012-10-17",
-		"Statement": [
-			{
-				"Effect": "Allow",
-				"Action": "s3:*",
-				"Resource": [
-					"arn:aws:s3:::%s",
-					"arn:aws:s3:::%s/*"
-				]
-			}
-		]
-	}`, bucketName, bucketName)
-	policyName := fmt.Sprintf("%s-policy", bucketName)
-	err := madminClient.AddCannedPolicy(ctx, policyName, []byte(policy))
-	if err != nil {
-		return fmt.Errorf("failed to set bucket policy: %w", err)
+func (c *controller) setBucketPolicyForUser(ctx context.Context, madminClient *madmin.AdminClient, buckets []string, username string) error {
+	resources := make([]string, 0, len(buckets)*2)
+	for _, bucketName := range buckets {
+		resources = append(resources, fmt.Sprintf("arn:aws:s3:::%s", bucketName))
+		resources = append(resources, fmt.Sprintf("arn:aws:s3:::%s/*", bucketName))
 	}
 
-	err = madminClient.SetPolicy(ctx, policyName, username, false)
+	policy := map[string]interface{}{
+		"Version": "2012-10-17",
+		"Statement": []map[string]interface{}{
+			{
+				"Effect":   "Allow",
+				"Action":   []string{"s3:ListAllMyBuckets", "s3:HeadBucket", "s3:GetBucketLocation"},
+				"Resource": []string{"arn:aws:s3:::*"},
+			},
+			{
+				"Effect":   "Allow",
+				"Action":   "s3:*",
+				"Resource": resources,
+			},
+		},
+	}
+
+	policyBytes, err := json.Marshal(policy)
 	if err != nil {
+		return fmt.Errorf("failed to marshal bucket policy: %w", err)
+	}
+
+	policyName := fmt.Sprintf("%s-policy", username)
+	if err := madminClient.AddCannedPolicy(ctx, policyName, policyBytes); err != nil {
+		return fmt.Errorf("failed to add canned policy: %w", err)
+	}
+
+	if err := madminClient.SetPolicy(ctx, policyName, username, false); err != nil {
 		return fmt.Errorf("failed to set policy: %s for user: %s, err %v", policyName, username, err)
 	}
-	klog.Infof("set bucket policy for user %s on bucket %s", username, bucketName)
+
+	klog.Infof("set bucket policy for user %s on buckets %v", username, buckets)
 	return nil
 }
 
