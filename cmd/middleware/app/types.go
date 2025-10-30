@@ -45,14 +45,15 @@ type MiddlewareRequestInfo struct {
 
 type MiddlewareRequestResp struct {
 	MiddlewareRequestInfo
-	Host      string            `json:"host"`
-	Port      int32             `json:"port"`
-	Indexes   map[string]string `json:"indexes"`
-	Databases map[string]string `json:"databases"`
-	Buckets   map[string]string `json:"buckets"`
-	Vhosts    map[string]string `json:"vhosts"`
-	Subjects  map[string]string `json:"subjects"`
-	Refs      map[string]string `json:"refs"`
+	Host         string            `json:"host"`
+	Port         int32             `json:"port"`
+	Indexes      map[string]string `json:"indexes"`
+	Databases    map[string]string `json:"databases"`
+	Buckets      map[string]string `json:"buckets"`
+	Vhosts       map[string]string `json:"vhosts"`
+	Subjects     map[string]string `json:"subjects"`
+	Refs         map[string]string `json:"refs"`
+	BucketPrefix string            `json:"bucketPrefix,omitempty"`
 }
 
 type Proxy struct {

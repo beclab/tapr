@@ -173,6 +173,8 @@ type Minio struct {
 	User     string        `json:"user"`
 	Password PasswordVar   `json:"password,omitempty"`
 	Buckets  []MinioBucket `json:"buckets"`
+	// AllowNamespaceBuckets indicates user can create and manage buckets with AppNamespace prefix
+	AllowNamespaceBuckets bool `json:"allowNamespaceBuckets,omitempty"`
 }
 
 type MinioBucket struct {

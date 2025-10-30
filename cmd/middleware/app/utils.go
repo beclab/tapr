@@ -167,6 +167,7 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 		for _, b := range m.Spec.Minio.Buckets {
 			resp.Buckets[b.Name] = minio.GetBucketName(m.Spec.AppNamespace, b.Name)
 		}
+		resp.BucketPrefix = m.Spec.AppNamespace
 
 		return resp, nil
 	case aprv1.TypeRabbitMQ:

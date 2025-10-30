@@ -156,6 +156,10 @@ spec:
                 type: string
               minio:
                 properties:
+                  allowNamespaceBuckets:
+                    description: AllowNamespaceBuckets indicates user can create and
+                      manage buckets with AppNamespace prefix
+                    type: boolean
                   buckets:
                     items:
                       properties:
