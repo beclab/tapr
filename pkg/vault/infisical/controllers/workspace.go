@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 
 	"bytetrade.io/web3os/tapr/pkg/utils"
 	"bytetrade.io/web3os/tapr/pkg/vault/infisical"
@@ -23,9 +24,22 @@ type workspaceController struct {
 }
 
 type workspaceClient struct {
+	mu sync.Mutex
 }
 
 func (w *workspaceClient) CreateWorkspace(user *infisical.UserEncryptionKeysPG, token, orgId, workspace, password string) (string, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	workspaceId, err := w.GetWorkspace(token, orgId, workspace)
+	if err == nil {
+		// already exists
+		return workspaceId, nil
+	}
+
+	if !w.IsNotFound(err) {
+		return "", err
+	}
+
 	url := infisical.InfisicalAddr + "/api/v2/workspace"
 
 	client := NewHttpClient()
@@ -49,7 +63,7 @@ func (w *workspaceClient) CreateWorkspace(user *infisical.UserEncryptionKeysPG, 
 	}
 
 	result := resp.Result().(*map[string]*Workspace)
-	workspaceId := (*result)["project"].Id
+	workspaceId = (*result)["project"].Id
 
 	// unnecessary in v2
 	// upload key to workspace to finish creating
