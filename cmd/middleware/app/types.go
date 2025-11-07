@@ -54,6 +54,7 @@ type MiddlewareRequestResp struct {
 	Subjects     map[string]string `json:"subjects"`
 	Refs         map[string]string `json:"refs"`
 	BucketPrefix string            `json:"bucketPrefix,omitempty"`
+	IndexPrefix  string            `json:"indexPrefix,omitempty"`
 }
 
 type Proxy struct {

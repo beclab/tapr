@@ -200,6 +200,7 @@ func (s *Server) getMiddlewareInfo(ctx *fiber.Ctx, mwReq *MiddlewareReq, m *aprv
 		for _, v := range m.Spec.Elasticsearch.Indexes {
 			resp.Indexes[v.Name] = elasticsearch.GetIndexName(m.Spec.AppNamespace, v.Name)
 		}
+		resp.IndexPrefix = m.Spec.AppNamespace
 
 		return resp, nil
 	case aprv1.TypeMariaDB:

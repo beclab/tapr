@@ -3,10 +3,12 @@ package middlewarerequest
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
-	"k8s.io/klog/v2"
 	"net/http"
 	"strings"
+
+	"k8s.io/klog/v2"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	wes "bytetrade.io/web3os/tapr/pkg/workload/elasticsearch"
@@ -53,6 +55,10 @@ func (c *controller) createOrUpdateElasticsearchRequest(req *aprv1.MiddlewareReq
 			return fmt.Errorf("failed to create index %s %v", name, err)
 		}
 	}
+	// If allowed, also grant privileges on any index with AppNamespace prefix
+	if req.Spec.Elasticsearch.AllowNamespaceIndexes {
+		indices = append(indices, fmt.Sprintf("%s_*", req.Spec.AppNamespace))
+	}
 	roleName := fmt.Sprintf("role-%s", req.Spec.Elasticsearch.User)
 	err = esPutRole(es, roleName, indices)
 	if err != nil {
@@ -89,6 +95,30 @@ func (c *controller) deleteElasticsearchRequest(req *aprv1.MiddlewareRequest) er
 		err = esDeleteIndex(es, wes.GetIndexName(req.Spec.AppNamespace, idx.Name))
 		if err != nil {
 			return fmt.Errorf("failed to delete index %v", err)
+		}
+	}
+
+	// Additionally delete any indices created with the namespace prefix if allowed
+	if req.Spec.Elasticsearch.AllowNamespaceIndexes {
+		patterns := []string{
+			fmt.Sprintf("%s_*", req.Spec.AppNamespace),
+		}
+		seen := make(map[string]struct{})
+		for _, pattern := range patterns {
+			names, lerr := esListIndices(es, pattern)
+			if lerr != nil {
+				klog.Warningf("failed to list indices for pattern %s: %v", pattern, lerr)
+				continue
+			}
+			for _, name := range names {
+				if _, ok := seen[name]; ok {
+					continue
+				}
+				seen[name] = struct{}{}
+				if derr := esDeleteIndex(es, name); derr != nil {
+					klog.Warningf("failed to delete index %s: %v", name, derr)
+				}
+			}
 		}
 	}
 	return nil
@@ -159,8 +189,42 @@ func esDeleteIndex(es *elastic.Client, index string) error {
 	return nil
 }
 
+// esListIndices returns index names matching the pattern using _cat/indices in JSON format
+func esListIndices(es *elastic.Client, pattern string) ([]string, error) {
+	req := esapi.CatIndicesRequest{Index: []string{pattern}, Format: "json"}
+	res, err := req.Do(context.Background(), es)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if res.IsError() {
+		return nil, fmt.Errorf("cat indices failed: %s", res.String())
+	}
+	var payload []struct {
+		Index string `json:"index"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(payload))
+	for _, it := range payload {
+		if it.Index != "" {
+			names = append(names, it.Index)
+		}
+	}
+	return names, nil
+}
+
 func esPutRole(es *elastic.Client, role string, indices []string) error {
-	body := fmt.Sprintf(`{"indices":[{"names":%q,"privileges":["all"]}]}`, indices)
+	namesJSON, err := json.Marshal(indices)
+	if err != nil {
+		return err
+	}
+	body := fmt.Sprintf(`{"cluster":["monitor"],"indices":[{"names":%s,"privileges":["all"]}]}`, string(namesJSON))
+	//body := fmt.Sprintf(`{"indices":[{"names":%q,"privileges":["all"]}]}`, indices)
 	req := esapi.SecurityPutRoleRequest{Name: role, Body: strings.NewReader(body)}
 	res, err := req.Do(context.Background(), es)
 	if err != nil {

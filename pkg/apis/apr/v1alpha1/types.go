@@ -194,7 +194,9 @@ type RabbitMQVhost struct {
 type Elasticsearch struct {
 	User     string               `json:"user"`
 	Password PasswordVar          `json:"password,omitempty"`
-	Indexes  []ElasticsearchIndex `json:"indexes"`
+	Indexes  []ElasticsearchIndex `json:"indexes,omitempty"`
+	// AllowNamespaceIndexes indicates user can create and manage indices with AppNamespace prefix
+	AllowNamespaceIndexes bool `json:"allowNamespaceIndexes,omitempty"`
 }
 
 type ElasticsearchIndex struct {
