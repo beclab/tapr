@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	wminio "bytetrade.io/web3os/tapr/pkg/workload/minio"
@@ -59,7 +60,7 @@ func (c *controller) createOrUpdateMinioRequest(req *aprv1.MiddlewareRequest) er
 		if err != nil {
 			exists, errBucketExists := minioClient.BucketExists(c.ctx, bucketName)
 			if errBucketExists != nil {
-				return fmt.Errorf("failed to check bucket existence: %w", errBucketExists)
+				return fmt.Errorf("failed to check bucket name: %s, existence: %w", bucketName, errBucketExists)
 			}
 			if !exists {
 				return fmt.Errorf("failed to create bucket %s: %w", bucketName, err)
@@ -68,7 +69,7 @@ func (c *controller) createOrUpdateMinioRequest(req *aprv1.MiddlewareRequest) er
 		}
 	}
 
-	err = c.setBucketPolicyForUser(c.ctx, madminClient, bucketList, req.Spec.Minio.User)
+	err = c.setBucketPolicyForUser(c.ctx, madminClient, bucketList, req)
 	if err != nil {
 		return fmt.Errorf("failed to set bucket policy: %w", err)
 	}
@@ -116,19 +117,36 @@ func (c *controller) deleteMinioRequest(req *aprv1.MiddlewareRequest) error {
 		}
 	}
 
+	// Additionally delete any buckets created with the namespace prefix if allowed
+	if req.Spec.Minio.AllowNamespaceBuckets {
+		prefix := req.Spec.AppNamespace + "-"
+		buckets, err := minioClient.ListBuckets(c.ctx)
+		if err != nil {
+			klog.Warning("failed to list buckets: ", err)
+		} else {
+			for _, b := range buckets {
+				if strings.HasPrefix(b.Name, prefix) {
+					klog.Info("delete prefixed bucket, ", b.Name)
+					if err := c.removeAllObjectsInBucket(c.ctx, minioClient, b.Name); err != nil {
+						klog.Warning("failed to remove objects in bucket ", b.Name, ": ", err)
+					}
+					if err := minioClient.RemoveBucket(c.ctx, b.Name); err != nil {
+						klog.Warning("failed to remove bucket ", b.Name, ": ", err)
+					}
+				}
+			}
+		}
+	}
+
 	err = c.deleteMinioUser(c.ctx, madminClient, req.Spec.Minio.User)
 	if err != nil {
 		return fmt.Errorf("failed to delete minio user: %w", err)
 	}
 
-	for _, bucket := range req.Spec.Minio.Buckets {
-		bucketName := wminio.GetBucketName(req.Spec.AppNamespace, bucket.Name)
-
-		policyName := fmt.Sprintf("%s-policy", bucketName)
-		err = madminClient.RemoveCannedPolicy(c.ctx, policyName)
-		if err != nil {
-			klog.Warning("failed to remove bucket policy", policyName, ": ", err)
-		}
+	// Remove the canned policy associated with the user
+	policyName := fmt.Sprintf("%s-policy", req.Spec.Minio.User)
+	if err := madminClient.RemoveCannedPolicy(c.ctx, policyName); err != nil {
+		klog.Warning("failed to remove user policy ", policyName, ": ", err)
 	}
 
 	return nil
@@ -152,27 +170,52 @@ func (c *controller) createOrUpdateMinioUser(ctx context.Context, madminClient *
 	return nil
 }
 
-func (c *controller) setBucketPolicyForUser(ctx context.Context, madminClient *madmin.AdminClient, buckets []string, username string) error {
+func (c *controller) setBucketPolicyForUser(ctx context.Context, madminClient *madmin.AdminClient, buckets []string, mr *aprv1.MiddlewareRequest) error {
 	resources := make([]string, 0, len(buckets)*2)
 	for _, bucketName := range buckets {
 		resources = append(resources, fmt.Sprintf("arn:aws:s3:::%s", bucketName))
 		resources = append(resources, fmt.Sprintf("arn:aws:s3:::%s/*", bucketName))
 	}
 
-	policy := map[string]interface{}{
-		"Version": "2012-10-17",
-		"Statement": []map[string]interface{}{
-			{
-				"Effect":   "Allow",
-				"Action":   []string{"s3:ListAllMyBuckets", "s3:HeadBucket", "s3:GetBucketLocation"},
-				"Resource": []string{"arn:aws:s3:::*"},
+	// Build base statements
+	statements := []map[string]interface{}{
+		{
+			"Effect":   "Allow",
+			"Action":   []string{"s3:ListAllMyBuckets", "s3:HeadBucket", "s3:GetBucketLocation"},
+			"Resource": []string{"arn:aws:s3:::*"},
+		},
+		{
+			"Effect":   "Allow",
+			"Action":   "s3:*",
+			"Resource": resources,
+		},
+	}
+
+	// If allowed, grant full access on all buckets with AppNamespace prefix and allow creating them
+
+	if mr.Spec.Minio.AllowNamespaceBuckets {
+		prefix := mr.Spec.AppNamespace
+		statements = append(statements,
+			map[string]interface{}{
+				"Effect": "Allow",
+				"Action": []string{
+					"s3:*",
+				},
+				"Resource": []string{
+					fmt.Sprintf("arn:aws:s3:::%s-*", prefix),
+				},
 			},
-			{
+			map[string]interface{}{
 				"Effect":   "Allow",
 				"Action":   "s3:*",
-				"Resource": resources,
+				"Resource": []string{fmt.Sprintf("arn:aws:s3:::%s-*/*", prefix)},
 			},
-		},
+		)
+	}
+
+	policy := map[string]interface{}{
+		"Version":   "2012-10-17",
+		"Statement": statements,
 	}
 
 	policyBytes, err := json.Marshal(policy)
@@ -180,16 +223,16 @@ func (c *controller) setBucketPolicyForUser(ctx context.Context, madminClient *m
 		return fmt.Errorf("failed to marshal bucket policy: %w", err)
 	}
 
-	policyName := fmt.Sprintf("%s-policy", username)
+	policyName := fmt.Sprintf("%s-policy", mr.Spec.Minio.User)
 	if err := madminClient.AddCannedPolicy(ctx, policyName, policyBytes); err != nil {
 		return fmt.Errorf("failed to add canned policy: %w", err)
 	}
 
-	if err := madminClient.SetPolicy(ctx, policyName, username, false); err != nil {
-		return fmt.Errorf("failed to set policy: %s for user: %s, err %v", policyName, username, err)
+	if err := madminClient.SetPolicy(ctx, policyName, mr.Spec.Minio.User, false); err != nil {
+		return fmt.Errorf("failed to set policy: %s for user: %s, err %v", policyName, mr.Spec.Minio.User, err)
 	}
 
-	klog.Infof("set bucket policy for user %s on buckets %v", username, buckets)
+	klog.Infof("set bucket policy for user %s on buckets %v", mr.Spec.Minio.User, buckets)
 	return nil
 }
 

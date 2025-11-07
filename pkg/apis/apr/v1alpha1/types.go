@@ -173,6 +173,8 @@ type Minio struct {
 	User     string        `json:"user"`
 	Password PasswordVar   `json:"password,omitempty"`
 	Buckets  []MinioBucket `json:"buckets"`
+	// AllowNamespaceBuckets indicates user can create and manage buckets with AppNamespace prefix
+	AllowNamespaceBuckets bool `json:"allowNamespaceBuckets,omitempty"`
 }
 
 type MinioBucket struct {
@@ -192,7 +194,9 @@ type RabbitMQVhost struct {
 type Elasticsearch struct {
 	User     string               `json:"user"`
 	Password PasswordVar          `json:"password,omitempty"`
-	Indexes  []ElasticsearchIndex `json:"indexes"`
+	Indexes  []ElasticsearchIndex `json:"indexes,omitempty"`
+	// AllowNamespaceIndexes indicates user can create and manage indices with AppNamespace prefix
+	AllowNamespaceIndexes bool `json:"allowNamespaceIndexes,omitempty"`
 }
 
 type ElasticsearchIndex struct {
