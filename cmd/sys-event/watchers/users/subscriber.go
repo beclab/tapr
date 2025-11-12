@@ -2,16 +2,11 @@ package users
 
 import (
 	"context"
-	"fmt"
-	"math"
-	"net"
-	"os"
-	"strconv"
 
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers"
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/kubesphere"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
@@ -76,7 +71,8 @@ func (n *Notify) doUpdate(ctx context.Context, user *kubesphere.User) error { re
 var _ task = &UserDomain{}
 
 type UserDomain struct {
-	client kubernetes.Interface
+	kubeClient    kubernetes.Interface
+	dynamicClient dynamic.Interface
 }
 
 // doAdd implements task.
@@ -84,70 +80,12 @@ func (u *UserDomain) doAdd(context.Context, *kubesphere.User) error { return nil
 
 // doDelete implements task.
 func (u *UserDomain) doDelete(ctx context.Context, user *kubesphere.User) error {
-	return u.updateCorefile(ctx, user, func(data, zone, _ string) (string, error) {
-		return watchers.RemoveTemplateFromCorefile(data, zone)
-	})
+	return watchers.RegenerateCorefile(ctx, u.kubeClient, u.dynamicClient)
 }
 
 // doUpdate implements task.
 func (u *UserDomain) doUpdate(ctx context.Context, user *kubesphere.User) error {
-	return u.updateCorefile(ctx, user, func(data, zone, ip string) (string, error) {
-		return watchers.UpsertCorefile(data, zone, ip)
-	})
-}
-
-func (u *UserDomain) updateCorefile(ctx context.Context, user *kubesphere.User, f func(data, zone, ip string) (string, error)) error {
-	zone, ok := user.Annotations[UserAnnotationZoneKey]
-	if !ok || zone == "" {
-		// zone not bind, ignore
-		return nil
-	}
-
-	userIndex, ok := user.Annotations[UserIndexAna]
-	if !ok || userIndex == "" {
-		klog.Infof("can not find user index from annotations")
-		return nil
-	}
-
-	userMaxStr := os.Getenv("OLARES_MAX_USERS")
-	if userMaxStr == "" {
-		userMaxStr = "1024"
-	}
-	userMax, err := strconv.ParseInt(userMaxStr, 10, 64)
-	if err != nil {
-		klog.Infof("parse user index failed %v", err)
-		return err
-	}
-	localIp := subDNSSplit(userMax)[userIndex]
-	if localIp == nil || localIp.String() == "" {
-		return fmt.Errorf("invalid ip address %v", localIp)
-	}
-	klog.Infof("localIp: %v", localIp)
-	corednsCm, err := u.client.CoreV1().ConfigMaps("kube-system").Get(ctx, "coredns", metav1.GetOptions{})
-	if err != nil {
-		klog.Error("get core dns config map error, ", err)
-		return err
-	}
-
-	corefileData, ok := corednsCm.Data["Corefile"]
-	if !ok || corefileData == "" {
-		klog.Warning("core dns config map is empty")
-		return nil
-	}
-
-	newCorefileData, err := f(corefileData, zone, localIp.String())
-	if err != nil {
-		return err
-	}
-
-	corednsCm.Data["Corefile"] = newCorefileData
-
-	_, err = u.client.CoreV1().ConfigMaps("kube-system").Update(ctx, corednsCm, metav1.UpdateOptions{})
-	if err != nil {
-		klog.Error("update core dns configmap error, ", err)
-	}
-
-	return err
+	return watchers.RegenerateCorefile(ctx, u.kubeClient, u.dynamicClient)
 }
 
 type Subscriber struct {
@@ -180,33 +118,4 @@ func (s *Subscriber) Do(ctx context.Context, obj interface{}, action watchers.Ac
 		}
 	}
 	return nil
-}
-
-func subDNSSplit(n int64) map[string]net.IP {
-	subDNSMap := make(map[string]net.IP)
-	log2n := int(math.Ceil(math.Log2(float64(n))))
-	alignedN := 1 << log2n
-	_, ipNet, _ := net.ParseCIDR("100.64.0.0/10")
-
-	baseIP := ipNet.IP.To4()
-	originalMaskLen, _ := ipNet.Mask.Size()
-
-	newMaskLen := originalMaskLen + log2n
-	ipsPerSubnet := 1 << (32 - newMaskLen)
-
-	for i := 0; i < alignedN; i++ {
-		offset := uint32(i * ipsPerSubnet)
-		subnetIP := make(net.IP, 4)
-		copy(subnetIP, baseIP)
-		for j := 3; j >= 0 && offset > 0; j-- {
-			subnetIP[j] += byte(offset & 0xFF)
-			offset >>= 8
-		}
-		firstUsableIP := make(net.IP, 4)
-		copy(firstUsableIP, subnetIP)
-		firstUsableIP[3]++
-		index := strconv.FormatInt(int64(i), 10)
-		subDNSMap[index] = firstUsableIP
-	}
-	return subDNSMap
 }

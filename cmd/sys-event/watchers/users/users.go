@@ -38,9 +38,6 @@ type watcher struct {
 const InvokeRetry = 10
 
 const UserTerminusWizardStatus = "bytetrade.io/wizard-status"
-const UserAnnotationZoneKey = "bytetrade.io/zone"
-const UserAnnotationLocalDomainDNSRecord = "bytetrade.io/local-domain-dns-record"
-const UserIndexAna = "bytetrade.io/user-index"
 
 type WizardStatus string
 
@@ -53,13 +50,14 @@ var schemeGroupVersionResource = schema.GroupVersionResource{Group: "iam.kubesph
 func NewWatcher(ctx context.Context, kubeconfig *rest.Config,
 	w *watchers.Watchers, n *watchers.Notification) *watcher {
 	kubeClient := kubernetes.NewForConfigOrDie(kubeconfig)
+	dynamicClient := dynamic.NewForConfigOrDie(kubeconfig)
 	return &watcher{
 		ctx:           ctx,
-		dynamicClient: dynamic.NewForConfigOrDie(kubeconfig),
+		dynamicClient: dynamicClient,
 		aprClient:     aprclientset.NewForConfigOrDie(kubeconfig),
 		cacheEvent:    make(map[string]map[string]runtime.Object),
 		eventWatchers: w,
-		subscriber:    &Subscriber{tasks: []task{&Notify{notification: n}, &UserDomain{client: kubeClient}}},
+		subscriber:    &Subscriber{tasks: []task{&Notify{notification: n}, &UserDomain{kubeClient: kubeClient, dynamicClient: dynamicClient}}},
 		activingUsers: make(map[string]string),
 	}
 }
