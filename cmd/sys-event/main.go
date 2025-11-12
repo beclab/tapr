@@ -6,6 +6,7 @@ import (
 	"bytetrade.io/web3os/tapr/cmd/sys-event/apiserver"
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers"
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers/apps"
+	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers/dnspod"
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers/metrics"
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers/users"
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers/workflows"
@@ -33,6 +34,10 @@ func main() {
 		(&apps.Subscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).HandleEvent())
 	watchers.AddToWatchers[corev1.Namespace](w, corev1.SchemeGroupVersion.WithResource("namespaces"),
 		(&workflows.Subscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).WithKubeConfig(config).HandleEvent())
+	watchers.AddToWatchers[corev1.Pod](w, corev1.SchemeGroupVersion.WithResource("pods"),
+		(&dnspod.PodSubscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).WithKubeConfig(config).HandleEvent())
+	watchers.AddToWatchers[corev1.Node](w, corev1.SchemeGroupVersion.WithResource("nodes"),
+		(&dnspod.NodeSubscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).WithKubeConfig(config).HandleEvent())
 
 	go w.Run(1)
 
