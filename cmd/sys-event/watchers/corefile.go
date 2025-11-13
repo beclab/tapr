@@ -152,7 +152,9 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 	if err != nil {
 		klog.Error("get adguardhome pod error, ", err)
 	} else {
-		adguardIp = pods.Items[0].Status.PodIP
+		if len(pods.Items) > 0 {
+			adguardIp = pods.Items[0].Status.PodIP
+		}
 	}
 
 	inclusterExpr := "incidr(client_ip(), '10.233.0.0/16')"
