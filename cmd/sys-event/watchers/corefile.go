@@ -75,6 +75,7 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 	}
 
 	var templatesPlugins []*corefile.Plugin
+	var inclusterTemplatesPlugins []*corefile.Plugin
 	var localTemplatesPlugins []*corefile.Plugin
 	var localDomainTemplatesPlugins []*corefile.Plugin
 
@@ -134,7 +135,18 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 			continue
 		}
 
+		ingressIp, err := getUserIngressIP(ctx, kubeClient, &u)
+		if err != nil {
+			klog.Error("get user ingress ip error, ", err)
+			return err
+		}
+		if ingressIp == "" {
+			klog.Info("user ", u.GetName(), " has no valid ingress ip, skip corefile update")
+			continue
+		}
+
 		templatesPlugins = addUserTemplates(userzone, ip.String(), templatesPlugins)
+		inclusterTemplatesPlugins = addUserTemplates(userzone, ingressIp, inclusterTemplatesPlugins)
 
 		if masterNodeIp == "" {
 			klog.Info("no master node ip found, skip adding local domain dns record")
@@ -161,7 +173,8 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 	if adguardIp != "" {
 		inclusterExpr = fmt.Sprintf("( %s && client_ip() != '%s' )", inclusterExpr, adguardIp)
 	}
-	inclusterExpr = fmt.Sprintf("%s || client_ip() == '%s'", inclusterExpr, masterNodeIp)
+
+	vpnExpr := fmt.Sprintf("incidr(client_ip(), '100.64.0.0/16') || client_ip() == '%s'", masterNodeIp)
 
 	inclusterView := &corefile.Plugin{
 		Name: "view",
@@ -174,9 +187,25 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 		},
 	}
 
+	vpnView := &corefile.Plugin{
+		Name: "view",
+		Args: []string{"vpn"},
+		Options: []*corefile.Option{
+			{
+				Name: "expr",
+				Args: []string{vpnExpr},
+			},
+		},
+	}
+
 	inclusterServer := &corefile.Server{
 		DomPorts: defaultsServer.DomPorts,
-		Plugins:  append([]*corefile.Plugin{inclusterView}, append(defaultPlugins, templatesPlugins...)...),
+		Plugins:  append([]*corefile.Plugin{inclusterView}, append(defaultPlugins, inclusterTemplatesPlugins...)...),
+	}
+
+	vpnServer := &corefile.Server{
+		DomPorts: defaultsServer.DomPorts,
+		Plugins:  append([]*corefile.Plugin{vpnView}, append(defaultPlugins, templatesPlugins...)...),
 	}
 
 	otherServer := &corefile.Server{
@@ -185,7 +214,7 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 			append(localTemplatesPlugins, localDomainTemplatesPlugins...)...),
 	}
 
-	file.Servers = []*corefile.Server{inclusterServer, otherServer}
+	file.Servers = []*corefile.Server{inclusterServer, vpnServer, otherServer}
 
 	newCorefileData := file.ToString()
 	corefileConfigMap.Data["Corefile"] = newCorefileData
@@ -383,6 +412,16 @@ func getUserLocalIp(user *unstructured.Unstructured) (net.IP, error) {
 	klog.Infof("localIp: %v", localIp)
 
 	return localIp, nil
+}
+
+func getUserIngressIP(ctx context.Context, kubeClient kubernetes.Interface, user *unstructured.Unstructured) (string, error) {
+	bfl, err := kubeClient.CoreV1().Pods("user-space-"+user.GetName()).Get(ctx, "bfl-0", metav1.GetOptions{})
+	if err != nil {
+		klog.Error("get bfl pod error, ", err)
+		return "", err
+	}
+
+	return bfl.Status.PodIP, nil
 }
 
 const UserAnnotationZoneKey = "bytetrade.io/zone"
