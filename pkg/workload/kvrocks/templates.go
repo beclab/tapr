@@ -43,8 +43,9 @@ var (
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                    "kvrocks",
-						"app.kubernetes.io/name": "kvrocks",
+						"app":                         "kvrocks",
+						"app.kubernetes.io/name":      "kvrocks",
+						"app.bytetrade.io/middleware": "true",
 					},
 				},
 

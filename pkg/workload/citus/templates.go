@@ -68,8 +68,9 @@ var (
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                    "citus",
-						"app.kubernetes.io/name": "citus",
+						"app":                         "citus",
+						"app.kubernetes.io/name":      "citus",
+						"app.bytetrade.io/middleware": "true",
 					},
 				},
 				Spec: corev1.PodSpec{

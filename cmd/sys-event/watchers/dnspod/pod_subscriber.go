@@ -34,7 +34,8 @@ func (s *PodSubscriber) HandleEvent() cache.ResourceEventHandler {
 			}
 
 			return pod.Labels["applications.app.bytetrade.io/name"] == "adguardhome" ||
-				pod.Labels["tier"] == "bfl"
+				pod.Labels["tier"] == "bfl" ||
+				pod.Labels["app.bytetrade.io/shared-entrance"] == "true"
 		},
 
 		Handler: cache.ResourceEventHandlerFuncs{

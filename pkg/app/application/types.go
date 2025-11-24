@@ -1,4 +1,4 @@
-package apps
+package application
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,6 +52,9 @@ type ApplicationSpec struct {
 
 	// the extend settings of the application
 	Settings map[string]string `json:"settings,omitempty"`
+
+	// SharedEntrances contains entrances shared with other applications
+	SharedEntrances []Entrance `json:"sharedEntrances,omitempty"`
 }
 
 // ApplicationStatus defines the observed state of Application
@@ -63,4 +66,25 @@ type ApplicationStatus struct {
 	State      string       `json:"state,omitempty"`
 	UpdateTime *metav1.Time `json:"updateTime"`
 	StatusTime *metav1.Time `json:"statusTime"`
+}
+
+// Entrance contains details for application entrance
+type Entrance struct {
+	Name string `yaml:"name" json:"name"`
+	Host string `yaml:"host" json:"host"`
+	Port int32  `yaml:"port" json:"port"`
+	// Optional. if invisible=true.
+	Icon string `yaml:"icon,omitempty" json:"icon,omitempty"`
+	// Optional. if invisible=true.
+	Title     string `yaml:"title" json:"title,omitempty"`
+	AuthLevel string `yaml:"authLevel,omitempty" json:"authLevel,omitempty"`
+	Invisible bool   `yaml:"invisible,omitempty" json:"invisible,omitempty"`
+	URL       string `yaml:"url,omitempty" json:"url,omitempty"`
+
+	// openMethod has three choices default, iframe, window
+	// Optional. if invisible=true.
+	OpenMethod string `yaml:"openMethod,omitempty" json:"openMethod,omitempty"`
+
+	WindowPushState bool `yaml:"windowPushState,omitempty" json:"windowPushState,omitempty"`
+	Skip            bool `yaml:"skip,omitempty" json:"skip,omitempty"`
 }
