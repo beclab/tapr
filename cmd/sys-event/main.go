@@ -10,6 +10,7 @@ import (
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers/metrics"
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers/users"
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers/workflows"
+	"bytetrade.io/web3os/tapr/pkg/app/application"
 	"bytetrade.io/web3os/tapr/pkg/signals"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/dynamic"
@@ -30,7 +31,7 @@ func main() {
 	w := watchers.NewWatchers(ctx, config, 0)
 
 	// add event subscriber to watchers
-	watchers.AddToWatchers[apps.Application](w, apps.GVR,
+	watchers.AddToWatchers[application.Application](w, application.GVR,
 		(&apps.Subscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).HandleEvent())
 	watchers.AddToWatchers[corev1.Namespace](w, corev1.SchemeGroupVersion.WithResource("namespaces"),
 		(&workflows.Subscriber{Subscriber: watchers.NewSubscriber(w).WithNotification(&notification)}).WithKubeConfig(config).HandleEvent())

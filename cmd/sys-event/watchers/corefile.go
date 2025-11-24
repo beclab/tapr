@@ -9,9 +9,11 @@ import (
 	"strconv"
 	"strings"
 
+	"bytetrade.io/web3os/tapr/pkg/app/application"
 	"github.com/coredns/corefile-migration/migration/corefile"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -157,6 +159,87 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 		userLocalZone := fmt.Sprintf("%s.olares.local", username)
 		localTemplatesPlugins = addUserTemplates(userzone, masterNodeIp, localTemplatesPlugins)
 		localDomainTemplatesPlugins = addUserTemplates(userLocalZone, masterNodeIp, localDomainTemplatesPlugins)
+	}
+
+	// find shared entrance ip from applications, set the shared entrance domain to in cluster view
+	err = func() error {
+		if len(userList.Items) == 0 {
+			klog.Info("no users found, skip adding shared entrance dns records")
+			return nil
+		}
+
+		zone := userList.Items[0].GetAnnotations()[UserAnnotationZoneKey]
+		if len(zone) == 0 {
+			klog.Info("no zone annotation found in user, skip adding shared entrance dns records")
+			return nil
+		}
+		tokens := strings.Split(zone, ".")
+		if len(tokens) < 2 {
+			klog.Info("invalid zone annotation found in user, skip adding shared entrance dns records")
+			return nil
+		}
+		tokens[0] = "shared"
+		zone = strings.Join(tokens, ".")
+
+		applications, err := dynamicClient.Resource(application.GVR).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			klog.Error("get applications error, ", err)
+			return err
+		}
+
+		for _, a := range applications.Items {
+			var app application.Application
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(a.Object, &app)
+			if err != nil {
+				klog.Error("convert obj error, ", err)
+				continue
+			}
+
+			if len(app.Spec.SharedEntrances) == 0 {
+				continue
+			}
+			// get the service of entrance
+			for _, entrance := range app.Spec.SharedEntrances {
+				svc, err := kubeClient.CoreV1().Services(app.Spec.Namespace).Get(ctx, entrance.Host, metav1.GetOptions{})
+				if err != nil {
+					klog.Error("get shared entrance service error, ", err)
+					continue
+				}
+
+				entranceIp := svc.Spec.ClusterIP
+				if entranceIp == "" {
+					klog.Info("shared entrance has no ingress ip, skip corefile update")
+					continue
+				}
+
+				domain := fmt.Sprintf("\"%s-%s.?(%s\\.)$\"", app.Spec.Appid, entrance.Name, zone)
+				options := []*corefile.Option{
+					{
+						Name: "match",
+						Args: []string{domain},
+					},
+					{
+						Name: "answer",
+						Args: []string{fmt.Sprintf("\"{{ .Name }} 60 IN A %s\"", entranceIp)},
+					},
+					{
+						Name: "fallthrough",
+						Args: []string{},
+					},
+				}
+
+				inclusterTemplatesPlugins = append(inclusterTemplatesPlugins, &corefile.Plugin{
+					Name:    "template",
+					Args:    []string{"IN", "A", domain},
+					Options: options,
+				})
+			} // end for entrances
+		} // end for applications
+
+		return nil
+	}()
+	if err != nil {
+		return err
 	}
 
 	var adguardIp string

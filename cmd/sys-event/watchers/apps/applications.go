@@ -6,6 +6,7 @@ import (
 
 	"bytetrade.io/web3os/tapr/cmd/sys-event/watchers"
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
+	"bytetrade.io/web3os/tapr/pkg/app/application"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -20,7 +21,7 @@ const suspendCauseAnnotation = "bytetrade.io/suspend-cause"
 func (s *Subscriber) HandleEvent() cache.ResourceEventHandler {
 	return cache.FilteringResourceEventHandler{
 		FilterFunc: func(obj interface{}) bool {
-			app, ok := obj.(*Application)
+			app, ok := obj.(*application.Application)
 			if !ok {
 				klog.Error("not application resource, invalid obj")
 				return false
@@ -35,7 +36,7 @@ func (s *Subscriber) HandleEvent() cache.ResourceEventHandler {
 
 		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				app := obj.(*Application)
+				app := obj.(*application.Application)
 				if watchers.ValidWatchDuration(&app.ObjectMeta) {
 					eobj := watchers.EnqueueObj{
 						Subscribe: s,
@@ -54,8 +55,8 @@ func (s *Subscriber) HandleEvent() cache.ResourceEventHandler {
 				s.Watchers.Enqueue(eobj)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldApp := oldObj.(*Application)
-				newApp := newObj.(*Application)
+				oldApp := oldObj.(*application.Application)
+				newApp := newObj.(*application.Application)
 
 				if a, ok := newApp.Annotations[suspendAnnotation]; ok && a != oldApp.Annotations[suspendAnnotation] {
 					eobj := watchers.EnqueueObj{
@@ -71,7 +72,7 @@ func (s *Subscriber) HandleEvent() cache.ResourceEventHandler {
 }
 
 func (s *Subscriber) Do(ctx context.Context, obj interface{}, action watchers.Action) error {
-	app := obj.(*Application)
+	app := obj.(*application.Application)
 	switch action {
 	case watchers.ADD:
 		klog.Info("app ", app.Spec.Namespace, "/", app.Spec.Name, " is installed")
