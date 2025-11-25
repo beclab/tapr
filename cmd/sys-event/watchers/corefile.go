@@ -2,6 +2,8 @@ package watchers
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"net"
@@ -218,7 +220,7 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 			}
 
 			// get the service of entrance
-			for _, entrance := range app.Spec.SharedEntrances {
+			for i, entrance := range app.Spec.SharedEntrances {
 				for _, ns := range sharedNs {
 					svc, err := kubeClient.CoreV1().Services(ns.Name).Get(ctx, entrance.Host, metav1.GetOptions{})
 					if err != nil {
@@ -232,8 +234,11 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 						continue
 					}
 
-					domain := fmt.Sprintf("%s-%s.%s", app.Spec.Appid, entrance.Name, zone)
-					domainPattern := fmt.Sprintf("\"%s-%s.?(%s\\.)$\"", app.Spec.Appid, entrance.Name, zone)
+					hash := md5.Sum([]byte(app.Spec.Appid + "shared"))
+					hashString := hex.EncodeToString(hash[:])
+					sharedEntranceIdPrefix := hashString[:8]
+					domain := fmt.Sprintf("%s%d.%s", sharedEntranceIdPrefix, i, zone)
+					domainPattern := fmt.Sprintf("\"%s%d.?(%s\\.)$\"", sharedEntranceIdPrefix, i, zone)
 					options := []*corefile.Option{
 						{
 							Name: "match",
