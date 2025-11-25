@@ -11,6 +11,7 @@ import (
 
 	"bytetrade.io/web3os/tapr/pkg/app/application"
 	"github.com/coredns/corefile-migration/migration/corefile"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -187,6 +188,12 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 			return err
 		}
 
+		nsList, err := kubeClient.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			klog.Error("list namespaces error, ", err)
+			return err
+		}
+
 		for _, a := range applications.Items {
 			var app application.Application
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(a.Object, &app)
@@ -198,41 +205,57 @@ func RegenerateCorefile(ctx context.Context, kubeClient kubernetes.Interface, dy
 			if len(app.Spec.SharedEntrances) == 0 {
 				continue
 			}
+
+			// get shared namespace of the application
+			var sharedNs []*corev1.Namespace
+			for _, ns := range nsList.Items {
+				refAppName := ns.Labels["applications.app.bytetrade.io/name"]
+				sharedNamespace := ns.Labels["bytetrade.io/ns-shared"]
+				installedUser := ns.Labels["applications.app.bytetrade.io/install_user"]
+				if refAppName == app.Spec.Name && sharedNamespace == "true" && installedUser == app.Spec.Owner {
+					sharedNs = append(sharedNs, &ns)
+				}
+			}
+
 			// get the service of entrance
 			for _, entrance := range app.Spec.SharedEntrances {
-				svc, err := kubeClient.CoreV1().Services(app.Spec.Namespace).Get(ctx, entrance.Host, metav1.GetOptions{})
-				if err != nil {
-					klog.Error("get shared entrance service error, ", err)
-					continue
-				}
+				for _, ns := range sharedNs {
+					svc, err := kubeClient.CoreV1().Services(ns.Name).Get(ctx, entrance.Host, metav1.GetOptions{})
+					if err != nil {
+						klog.Error("get shared entrance service error, ", err)
+						continue
+					}
 
-				entranceIp := svc.Spec.ClusterIP
-				if entranceIp == "" {
-					klog.Info("shared entrance has no ingress ip, skip corefile update")
-					continue
-				}
+					entranceIp := svc.Spec.ClusterIP
+					if entranceIp == "" {
+						klog.Info("shared entrance has no ingress ip, skip corefile update")
+						continue
+					}
 
-				domain := fmt.Sprintf("\"%s-%s.?(%s\\.)$\"", app.Spec.Appid, entrance.Name, zone)
-				options := []*corefile.Option{
-					{
-						Name: "match",
-						Args: []string{domain},
-					},
-					{
-						Name: "answer",
-						Args: []string{fmt.Sprintf("\"{{ .Name }} 60 IN A %s\"", entranceIp)},
-					},
-					{
-						Name: "fallthrough",
-						Args: []string{},
-					},
-				}
+					domain := fmt.Sprintf("%s-%s.%s", app.Spec.Appid, entrance.Name, zone)
+					domainPattern := fmt.Sprintf("\"%s-%s.?(%s\\.)$\"", app.Spec.Appid, entrance.Name, zone)
+					options := []*corefile.Option{
+						{
+							Name: "match",
+							Args: []string{domainPattern},
+						},
+						{
+							Name: "answer",
+							Args: []string{fmt.Sprintf("\"{{ .Name }} 60 IN A %s\"", entranceIp)},
+						},
+						{
+							Name: "fallthrough",
+							Args: []string{},
+						},
+					}
 
-				inclusterTemplatesPlugins = append(inclusterTemplatesPlugins, &corefile.Plugin{
-					Name:    "template",
-					Args:    []string{"IN", "A", domain},
-					Options: options,
-				})
+					inclusterTemplatesPlugins = append(inclusterTemplatesPlugins, &corefile.Plugin{
+						Name:    "template",
+						Args:    []string{"IN", "A", domain},
+						Options: options,
+					})
+
+				} // end for sharedNs
 			} // end for entrances
 		} // end for applications
 
