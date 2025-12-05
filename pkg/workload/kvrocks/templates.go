@@ -88,6 +88,9 @@ var (
 									MountPath: KVRocksDataDir,
 								},
 							},
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser: pointer.Int64(0),
+							},
 						},
 					},
 					Containers: []corev1.Container{
