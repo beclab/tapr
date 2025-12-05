@@ -12,7 +12,7 @@ import (
 
 const (
 	DefaultKVRocksName      = "kvrocks"
-	DefaultKVRocksImage     = "beclab/kvrocks:0.1.0"
+	DefaultKVRocksImage     = "beclab/kvrocks:0.1.1"
 	KVRocksVolumeName       = "kvrdata"
 	KVRocksBackupVolumeName = "kvrbackup"
 	KVRocksBackupDir        = "/backup"
@@ -118,6 +118,9 @@ var (
 									Protocol:      corev1.ProtocolTCP,
 									ContainerPort: 6666,
 								},
+							},
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser: pointer.Int64(0),
 							},
 							LivenessProbe: &corev1.Probe{
 								InitialDelaySeconds: 10,
