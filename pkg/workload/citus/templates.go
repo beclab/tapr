@@ -21,7 +21,7 @@ const (
 	CitusMasterServiceName   = "citus-master-svc"
 	PGClusterName            = "citus"
 	PGClusterNamespace       = constants.PlatformNamespace
-	DefaultPGAdminUser       = "terminus"
+	DefaultPGAdminUser       = "olares"
 	PGClusterBackup          = "citus-backup"
 	PGClusterRestore         = "citus-restore"
 )

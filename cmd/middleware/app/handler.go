@@ -1,13 +1,16 @@
 package app
 
 import (
+	"fmt"
 	"strconv"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
+	"bytetrade.io/web3os/tapr/pkg/constants"
 	"bytetrade.io/web3os/tapr/pkg/workload/citus"
 	"bytetrade.io/web3os/tapr/pkg/workload/elasticsearch"
 	"bytetrade.io/web3os/tapr/pkg/workload/mariadb"
 	wmysql "bytetrade.io/web3os/tapr/pkg/workload/mysql"
+	"bytetrade.io/web3os/tapr/pkg/workload/nats"
 
 	"bytetrade.io/web3os/tapr/pkg/workload/minio"
 	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
@@ -64,15 +67,22 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 		return err
 	}
 
+	queryType := ctx.Query("middleware")
+	var filterType aprv1.MiddlewareType
+	if queryType != "" {
+		filterType = aprv1.MiddlewareType(queryType)
+	}
+
 	var infos []*MiddlewareRequestInfo
 	for _, m := range middlewares {
+		// Optional filter by middleware type via query parameter
+		if filterType != "" && m.Spec.Middleware != filterType {
+			continue
+		}
 		var (
 			user, pwd string
 			err       error
 			dbs       []Database
-			buckets   []Bucket
-			vhosts    []Vhost
-			indexes   []Index
 		)
 		switch m.Spec.Middleware {
 		case aprv1.TypeMongoDB:
@@ -128,7 +138,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 				return err
 			}
 			for _, b := range m.Spec.Minio.Buckets {
-				buckets = append(buckets, Bucket{Name: minio.GetBucketName(m.Spec.AppNamespace, b.Name)})
+				dbs = append(dbs, Database{Name: minio.GetBucketName(m.Spec.AppNamespace, b.Name)})
 			}
 		case aprv1.TypeRabbitMQ:
 			user = m.Spec.RabbitMQ.User
@@ -138,7 +148,7 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 				return err
 			}
 			for _, b := range m.Spec.RabbitMQ.Vhosts {
-				vhosts = append(vhosts, Vhost{Name: rabbitmq.GetVhostName(m.Spec.AppNamespace, b.Name)})
+				dbs = append(dbs, Database{Name: rabbitmq.GetVhostName(m.Spec.AppNamespace, b.Name)})
 			}
 		case aprv1.TypeElasticsearch:
 			user = m.Spec.Elasticsearch.User
@@ -148,8 +158,20 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 				return err
 			}
 			for _, b := range m.Spec.Elasticsearch.Indexes {
-				indexes = append(indexes, Index{Name: elasticsearch.GetIndexName(m.Spec.AppNamespace, b.Name)})
+				dbs = append(dbs, Database{Name: elasticsearch.GetIndexName(m.Spec.AppNamespace, b.Name)})
 			}
+		case aprv1.TypeNats:
+			user = m.Spec.Nats.User
+			klog.Infof("nats: m.Namespace: %s", m.Namespace)
+			pwd, err = m.Spec.Nats.Password.GetVarValue(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				klog.Errorf("get middleware nats request password error %v", err)
+				return err
+			}
+			for _, s := range m.Spec.Nats.Subjects {
+				dbs = append(dbs, Database{Name: fmt.Sprintf("%s.%s", m.Spec.AppNamespace, s.Name)})
+			}
+
 		}
 		info := &MiddlewareRequestInfo{
 			MetaInfo: MetaInfo{
@@ -163,10 +185,11 @@ func (s *Server) handleListMiddlewareRequests(ctx *fiber.Ctx) error {
 			UserName:  user,
 			Password:  pwd,
 			Databases: dbs,
-			Buckets:   buckets,
-			Vhosts:    vhosts,
-			Indexes:   indexes,
-			Type:      m.Spec.Middleware,
+			//Buckets:   buckets,
+			//Vhosts:    vhosts,
+			//Indexes:   indexes,
+			//Subjects:  subjects,
+			Type: m.Spec.Middleware,
 		}
 
 		infos = append(infos, info)
@@ -197,6 +220,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 			}
 
 			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeRedis,
 				MetaInfo: MetaInfo{
 					Name:      drc.Name,
 					Namespace: drc.Namespace,
@@ -225,6 +249,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 			}
 
 			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeMongoDB,
 				MetaInfo: MetaInfo{
 					Name:      mdb.Name,
 					Namespace: mdb.Namespace,
@@ -258,6 +283,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 			}
 
 			cres := MiddlewareClusterResp{
+				MiddlewareType: TypePostgreSQL,
 				MetaInfo: MetaInfo{
 					Name:      pgc.Name,
 					Namespace: pgc.Namespace,
@@ -281,6 +307,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				return err
 			}
 			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeMinio,
 				MetaInfo: MetaInfo{
 					Name:      m.Name,
 					Namespace: m.Namespace,
@@ -306,6 +333,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				return err
 			}
 			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeRabbitMQ,
 				MetaInfo: MetaInfo{
 					Name:      m.Name,
 					Namespace: m.Namespace,
@@ -331,6 +359,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				return err
 			}
 			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeElasticsearch,
 				MetaInfo: MetaInfo{
 					Name:      m.Name,
 					Namespace: m.Namespace,
@@ -356,6 +385,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				return err
 			}
 			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeMariaDB,
 				MetaInfo: MetaInfo{
 					Name:      m.Name,
 					Namespace: m.Namespace,
@@ -381,6 +411,7 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 				return err
 			}
 			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeMySQL,
 				MetaInfo: MetaInfo{
 					Name:      m.Name,
 					Namespace: m.Namespace,
@@ -397,6 +428,248 @@ func (s *Server) handleListMiddlewares(ctx *fiber.Ctx) error {
 	default:
 		return fiber.ErrNotFound
 	}
+
+	return ctx.JSON(map[string]interface{}{
+		"code": fiber.StatusOK,
+		"data": clusterResp,
+	})
+}
+func (s *Server) handleListMiddlewaresAll(ctx *fiber.Ctx) error {
+	var clusterResp []*MiddlewareClusterResp
+	username := ctx.Context().UserValueBytes(constants.UsernameCtxKey)
+
+	// Redis
+	klog.Info("list redis cluster crd")
+	if drcs, err := rediscluster.ListKvRocks(s.RedixLister); err == nil {
+		for _, drc := range drcs {
+			pwd, err := rediscluster.FindRedisClusterPassword(ctx.UserContext(), s.k8sClientSet, drc.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeRedis,
+				MetaInfo: MetaInfo{
+					Name:      drc.Name,
+					Namespace: drc.Namespace,
+				},
+				Password: pwd,
+				Proxy: Proxy{
+					Endpoint: fmt.Sprintf("%s.%s:6379", rediscluster.RedisClusterService, fmt.Sprintf("user-system-%s", username.(string))),
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	} else {
+		return err
+	}
+
+	// MongoDB
+	klog.Info("list percona mongo cluster crd")
+	if mdbs, err := mongodb.ListMongoClusters(ctx.UserContext(), s.ctrlClient, ""); err == nil {
+		for _, mdb := range mdbs {
+			user, pwd, err := mongodb.FindMongoAdminUser(ctx.UserContext(), s.k8sClientSet, "mongodb-middleware")
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeMongoDB,
+				MetaInfo: MetaInfo{
+					Name:      mdb.Name,
+					Namespace: mdb.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Nodes:     1,
+				Proxy: Proxy{
+					Endpoint: mdb.Name + "-mongodb-headless." + mdb.Namespace + ":" + "27017",
+					Size:     1,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	} else {
+		return err
+	}
+
+	// PostgreSQL
+	klog.Info("list pg cluster crd")
+	if pgcs, err := s.PgLister.List(labels.Everything()); err == nil {
+		for _, pgc := range pgcs {
+			user, pwd, err := citus.GetPGClusterAdminUserAndPassword(ctx.UserContext(), s.aprClientSet, s.k8sClientSet, pgc.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MiddlewareType: TypePostgreSQL,
+				MetaInfo: MetaInfo{
+					Name:      pgc.Name,
+					Namespace: pgc.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Nodes:     pgc.Spec.Replicas,
+				Proxy: Proxy{
+					Endpoint: fmt.Sprintf("%s.%s:5432", "citus-master-svc", fmt.Sprintf("user-system-%s", username.(string))),
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	} else {
+		return err
+	}
+
+	// Minio
+	klog.Info("list minio cluster crd")
+	if minios, err := minio.ListMinioClusters(ctx.UserContext(), s.ctrlClient, ""); err == nil {
+		for _, m := range minios {
+			user, pwd, err := minio.FindMinioAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeMinio,
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Proxy: Proxy{
+					Endpoint: m.Name + "-minio-headless." + m.Namespace + ":" + "9000",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	} else {
+		return err
+	}
+
+	// RabbitMQ
+	klog.Info("list rabbitmq cluster crd")
+	if rabbitmqs, err := rabbitmq.ListRabbitMQClusters(ctx.UserContext(), s.ctrlClient, ""); err == nil {
+		for _, m := range rabbitmqs {
+			user, pwd, err := rabbitmq.FindRabbitMQAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeRabbitMQ,
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Proxy: Proxy{
+					Endpoint: m.Name + "-rabbitmq-headless." + m.Namespace + ":" + "5672",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	} else {
+		return err
+	}
+
+	// Elasticsearch
+	klog.Info("list elasticsearch cluster crd")
+	if elss, err := elasticsearch.ListRabbitMQClusters(ctx.UserContext(), s.ctrlClient, ""); err == nil {
+		for _, m := range elss {
+			user, pwd, err := elasticsearch.FindElasticsearchAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeElasticsearch,
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Proxy: Proxy{
+					Endpoint: m.Name + "-mdit-http." + m.Namespace + ":" + "9200",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	} else {
+		return err
+	}
+
+	// MariaDB
+	klog.Info("list mariadb cluster crd")
+	if mdbs, err := mariadb.ListMariadbClusters(ctx.UserContext(), s.ctrlClient, ""); err == nil {
+		for _, m := range mdbs {
+			user, pwd, err := mariadb.FindMariaDBAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeMariaDB,
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Proxy: Proxy{
+					Endpoint: m.Name + "-mariadb-headless." + m.Namespace + ":" + "3306",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	} else {
+		return err
+	}
+
+	// MySQL
+	klog.Info("list mysql cluster crd")
+	if mdbs, err := wmysql.ListMysqlClusters(ctx.UserContext(), s.ctrlClient, ""); err == nil {
+		for _, m := range mdbs {
+			user, pwd, err := wmysql.FindMysqlAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
+			if err != nil {
+				return err
+			}
+			cres := MiddlewareClusterResp{
+				MiddlewareType: TypeMySQL,
+				MetaInfo: MetaInfo{
+					Name:      m.Name,
+					Namespace: m.Namespace,
+				},
+				AdminUser: user,
+				Password:  pwd,
+				Proxy: Proxy{
+					Endpoint: m.Name + "-mysql-headless." + m.Namespace + ":" + "3306",
+					Size:     m.Spec.ComponentSpecs[0].Replicas,
+				},
+			}
+			clusterResp = append(clusterResp, &cres)
+		}
+	} else {
+		return err
+	}
+	user, pwd, err := nats.FindNatsAdminUser(ctx.UserContext(), s.k8sClientSet)
+	if err != nil {
+		return err
+	}
+
+	natsResp := MiddlewareClusterResp{
+		MiddlewareType: TypeNats,
+		MetaInfo: MetaInfo{
+			Name:      "nats",
+			Namespace: "os-platform",
+		},
+		AdminUser: user,
+		Password:  pwd,
+		Proxy: Proxy{
+			Endpoint: fmt.Sprintf("%s.%s:%d", "nats", constants.PlatformNamespace, 4222),
+		},
+	}
+	clusterResp = append(clusterResp, &natsResp)
 
 	return ctx.JSON(map[string]interface{}{
 		"code": fiber.StatusOK,
