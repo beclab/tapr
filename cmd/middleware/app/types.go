@@ -2,6 +2,36 @@ package app
 
 import aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 
+// MiddlewareType represents the type of middleware.
+type MiddlewareType string
+
+// describes the type of middleware support.
+const (
+	// TypePostgreSQL indicates the middleware is postgresql.
+	TypePostgreSQL MiddlewareType = "postgres"
+	// TypeMongoDB indicates the middleware is mongodb.
+	TypeMongoDB MiddlewareType = "mongodb"
+	// TypeRedis indicates the middleware is redis.
+	TypeRedis MiddlewareType = "redis"
+	// TypeNats indicates the middleware is nats
+	TypeNats MiddlewareType = "nats"
+
+	// TypeMinio indicates the middleware is minio
+	TypeMinio MiddlewareType = "minio"
+
+	// TypeRabbitMQ indicates the middleware is rabbitmq
+	TypeRabbitMQ MiddlewareType = "rabbitmq"
+
+	// TypeElasticsearch indicates the middleware is elasticsearch
+	TypeElasticsearch MiddlewareType = "elasticsearch"
+
+	// TypeMariaDB indicates the middleware is mariadb
+	TypeMariaDB MiddlewareType = "mariadb"
+
+	// TypeMySQL indicates the middleware is mysql
+	TypeMySQL MiddlewareType = "mysql"
+)
+
 type MiddlewareReq struct {
 	App          string               `json:"app"`
 	AppNamespace string               `json:"appNamespace"`
@@ -41,6 +71,7 @@ type MiddlewareRequestInfo struct {
 	Buckets   []Bucket             `json:"buckets,omitempty"`
 	Indexes   []Index              `json:"indexes,omitempty"`
 	Vhosts    []Vhost              `json:"vhosts,omitempty"`
+	Subjects  []aprv1.Subject      `json:"subjects,omitempty"`
 }
 
 type MiddlewareRequestResp struct {
@@ -64,12 +95,13 @@ type Proxy struct {
 
 type MiddlewareClusterResp struct {
 	MetaInfo
-	Nodes      int32  `json:"nodes"`
-	AdminUser  string `json:"adminUser"`
-	Password   string `json:"password"`
-	Mongos     Proxy  `json:"mongos,omitempty"`
-	RedisProxy Proxy  `json:"redisProxy,omitempty"`
-	Proxy      Proxy  `json:"proxy,omitempty"`
+	Nodes          int32          `json:"nodes"`
+	AdminUser      string         `json:"adminUser"`
+	Password       string         `json:"password"`
+	Mongos         Proxy          `json:"mongos,omitempty"`
+	RedisProxy     Proxy          `json:"redisProxy,omitempty"`
+	Proxy          Proxy          `json:"proxy,omitempty"`
+	MiddlewareType MiddlewareType `json:"type"`
 }
 
 type ClusterScaleReq struct {

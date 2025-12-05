@@ -377,3 +377,11 @@ func GetOwnerNameFromNs(ns string) string {
 	nsSplict := strings.Split(ns, "-")
 	return nsSplict[len(nsSplict)-1]
 }
+
+func FindNatsAdminUser(ctx context.Context, k8sClient *kubernetes.Clientset) (user, password string, err error) {
+	secret, err := k8sClient.CoreV1().Secrets(constants.PlatformNamespace).Get(ctx, "nats-secrets", metav1.GetOptions{})
+	if err != nil {
+		return "", "", err
+	}
+	return "admin", string(secret.Data["nats_password"]), nil
+}

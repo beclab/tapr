@@ -228,13 +228,13 @@ func ListRedisClusters(ctx context.Context, dynamicClient *dynamic.DynamicClient
 }
 
 func FindRedisClusterPassword(ctx context.Context, k8sClient *kubernetes.Clientset, namespace string) (string, error) {
-	secret, err := k8sClient.CoreV1().Secrets(namespace).Get(ctx, "redis-cluster-admin", metav1.GetOptions{})
+	secret, err := k8sClient.CoreV1().Secrets(namespace).Get(ctx, "redix-cluster-admin", metav1.GetOptions{})
 	if err != nil {
 		klog.Error("find redis cluster secret error, ", err)
 		return "", err
 	}
 
-	return string(secret.Data["password"]), err
+	return string(secret.Data["kvrocks_password"]), err
 }
 
 func FindRedisClusterProxyInfo(ctx context.Context, k8sClient *kubernetes.Clientset,

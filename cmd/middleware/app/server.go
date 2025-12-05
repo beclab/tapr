@@ -63,6 +63,8 @@ func (s *Server) ServerRun() {
 
 	app.Get("/middleware/v1/:middleware/list", middleware.GetUserInfo(s.KubeConfig,
 		middleware.RequireAdmin(s.KubeConfig, s.handleListMiddlewares)))
+	app.Get("/middleware/v1/list", middleware.GetUserInfo(s.KubeConfig,
+		middleware.RequireAdmin(s.KubeConfig, s.handleListMiddlewaresAll)))
 	app.Post("/middleware/v1/:middleware/scale", middleware.GetUserInfo(s.KubeConfig,
 		middleware.RequireAdmin(s.KubeConfig, s.handleScaleMiddleware)))
 	app.Post("/middleware/v1/:middleware/password", middleware.GetUserInfo(s.KubeConfig,

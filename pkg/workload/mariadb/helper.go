@@ -18,9 +18,9 @@ func ListMariadbClusters(ctx context.Context, ctrlClient client.Client, namespac
 	if err != nil {
 		return nil, err
 	}
-	for _, cluster := range clusterList.Items {
-		if cluster.Labels != nil && cluster.Labels[constants.ClusterInstanceNameKey] == "mariadb" {
-			clusters = append(clusters, cluster)
+	for _, c := range clusterList.Items {
+		if c.Labels != nil && (c.Labels[constants.ClusterInstanceNameKey] == "mariadb" || c.Name == "mariadb") {
+			clusters = append(clusters, c)
 		}
 	}
 	return clusters, nil
