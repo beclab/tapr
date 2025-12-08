@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	"bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
 	"bytetrade.io/web3os/tapr/pkg/mongo"
 	"bytetrade.io/web3os/tapr/pkg/workload/mongodb"
 
 	kbappsv1 "github.com/apecloud/kubeblocks/apis/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 )
@@ -33,6 +33,11 @@ func (c *controller) createOrUpdateMDBRequest(req *aprv1.MiddlewareRequest) erro
 func (c *controller) deleteMDBRequest(req *aprv1.MiddlewareRequest) error {
 	client, err := c.connectToCluster(req)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// MongoDB cluster or admin secret missing, service likely already removed. No-op.
+			klog.Infof("mongodb admin credentials or cluster not found, skipping deletion for user %s", req.Spec.MongoDB.User)
+			return nil
+		}
 		return err
 	}
 	defer client.Close(c.ctx)
@@ -83,10 +88,10 @@ func (c *controller) getMongoClusterAdminUser(req *aprv1.MiddlewareRequest) (use
 	return mongodb.FindMongoAdminUser(c.ctx, c.k8sClientSet, "mongodb-middleware")
 }
 
-func dbRealNames(namespace string, dbs []v1alpha1.MongoDatabase) []v1alpha1.MongoDatabase {
-	ret := make([]v1alpha1.MongoDatabase, 0, len(dbs))
+func dbRealNames(namespace string, dbs []aprv1.MongoDatabase) []aprv1.MongoDatabase {
+	ret := make([]aprv1.MongoDatabase, 0, len(dbs))
 	for _, db := range dbs {
-		ret = append(ret, v1alpha1.MongoDatabase{
+		ret = append(ret, aprv1.MongoDatabase{
 			Name:    mongodb.GetDatabaseName(namespace, db.Name),
 			Scripts: db.Scripts,
 		})
