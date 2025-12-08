@@ -3,6 +3,8 @@ package middlewarerequest
 import (
 	"database/sql"
 	"fmt"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
@@ -67,6 +69,11 @@ func (c *controller) deleteMysqlRequest(req *aprv1.MiddlewareRequest) error {
 	adminUser, adminPassword, err := wmysql.FindMysqlAdminUser(c.ctx, c.k8sClientSet, mysqlNamespace)
 	if err != nil {
 		klog.Errorf("failed to get mysql admin user %v", err)
+		if apierrors.IsNotFound(err) {
+			// MySQL admin secret missing, service likely already removed. No-op.
+			klog.Infof("mysql admin secret not found, skipping deletion for user %s", req.Spec.Mysql.User)
+			return nil
+		}
 		return err
 	}
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/", adminUser, adminPassword, c.getMysqlHost())

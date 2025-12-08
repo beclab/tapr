@@ -9,6 +9,7 @@ import (
 	wrabbit "bytetrade.io/web3os/tapr/pkg/workload/rabbitmq"
 	rabbithole "github.com/michaelklishin/rabbit-hole/v3"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -73,6 +74,11 @@ func (c *controller) deleteRabbitMQRequest(req *aprv1.MiddlewareRequest) error {
 	rmqc, err := c.newRabbitMQClient()
 	if err != nil {
 		klog.Errorf("failed to new rabbit client %v", err)
+		if apierrors.IsNotFound(err) {
+			// RabbitMQ admin secret missing, service likely already removed. No-op.
+			klog.Infof("rabbitmq admin secret not found, skipping deletion for user %s", req.Spec.RabbitMQ.User)
+			return nil
+		}
 		return err
 	}
 	user := req.Spec.RabbitMQ.User

@@ -12,6 +12,7 @@ import (
 	"github.com/minio/madmin-go"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -80,6 +81,12 @@ func (c *controller) createOrUpdateMinioRequest(req *aprv1.MiddlewareRequest) er
 func (c *controller) deleteMinioRequest(req *aprv1.MiddlewareRequest) error {
 	adminUser, adminPassword, err := c.findMinioAdminCredentials(req.Namespace)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// MinIO admin secret is gone, likely because MinIO middleware was already removed.
+			// Nothing to clean up; treat as successful no-op.
+			klog.Infof("minio admin secret not found, skipping deletion for user %s", req.Spec.Minio.User)
+			return nil
+		}
 		return fmt.Errorf("failed to find minio admin credentials: %w", err)
 	}
 

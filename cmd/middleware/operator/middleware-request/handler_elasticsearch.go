@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
@@ -75,6 +76,11 @@ func (c *controller) deleteElasticsearchRequest(req *aprv1.MiddlewareRequest) er
 	adminUser, adminPassword, err := wes.FindElasticsearchAdminUser(c.ctx, c.k8sClientSet, elasticNamespace)
 	if err != nil {
 		klog.Errorf("failed to find admin user %v", err)
+		if apierrors.IsNotFound(err) {
+			// Elasticsearch admin secret missing, service likely already removed. No-op.
+			klog.Infof("elasticsearch admin secret not found, skipping deletion for user %s", req.Spec.Elasticsearch.User)
+			return nil
+		}
 		return err
 	}
 	endpoint := c.getElasticsearchEndpoint()

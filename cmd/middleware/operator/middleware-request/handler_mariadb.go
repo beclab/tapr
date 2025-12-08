@@ -3,6 +3,8 @@ package middlewarerequest
 import (
 	"database/sql"
 	"fmt"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
@@ -66,6 +68,11 @@ func (c *controller) deleteMariaDBRequest(req *aprv1.MiddlewareRequest) error {
 	adminUser, adminPassword, err := wmariadb.FindMariaDBAdminUser(c.ctx, c.k8sClientSet, mariadbNamespace)
 	if err != nil {
 		klog.Errorf("failed to get mariadb admin user %v", err)
+		if apierrors.IsNotFound(err) {
+			// MariaDB admin secret missing, service likely already removed. No-op.
+			klog.Infof("mariadb admin secret not found, skipping deletion for user %s", req.Spec.MariaDB.User)
+			return nil
+		}
 		return err
 	}
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/", adminUser, adminPassword, c.getMariaDBHost())
