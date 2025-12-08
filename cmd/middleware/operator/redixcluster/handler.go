@@ -28,7 +28,7 @@ func (c *controller) handler(action Action, obj interface{}) error {
 
 	switch action {
 	case ADD:
-		sts, err := kvrocks.CreateKVRocks(c.ctx, c.k8sClientSet, cluster)
+		sts, err := kvrocks.CreateOrUpdateKVRocks(c.ctx, c.k8sClientSet, cluster, false)
 		if err != nil {
 			return err
 		}
@@ -37,7 +37,10 @@ func (c *controller) handler(action Action, obj interface{}) error {
 		return err
 
 	case UPDATE:
-		return kvrocks.UpdateKVRocks(c.ctx, c.k8sClientSet, cluster)
+		_, err := kvrocks.CreateOrUpdateKVRocks(c.ctx, c.k8sClientSet, cluster, true)
+		if err != nil {
+			return err
+		}
 	case DELETE:
 		return kvrocks.DeleteKVRocks(c.ctx, c.k8sClientSet, cluster)
 	}
