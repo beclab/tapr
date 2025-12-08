@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"strconv"
 
 	aprv1 "bytetrade.io/web3os/tapr/pkg/apis/apr/v1alpha1"
@@ -469,6 +470,9 @@ func (s *Server) handleListMiddlewaresAll(ctx *fiber.Ctx) error {
 		for _, mdb := range mdbs {
 			user, pwd, err := mongodb.FindMongoAdminUser(ctx.UserContext(), s.k8sClientSet, "mongodb-middleware")
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					continue
+				}
 				return err
 			}
 			cres := MiddlewareClusterResp{
@@ -524,6 +528,9 @@ func (s *Server) handleListMiddlewaresAll(ctx *fiber.Ctx) error {
 		for _, m := range minios {
 			user, pwd, err := minio.FindMinioAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					continue
+				}
 				return err
 			}
 			cres := MiddlewareClusterResp{
@@ -551,6 +558,9 @@ func (s *Server) handleListMiddlewaresAll(ctx *fiber.Ctx) error {
 		for _, m := range rabbitmqs {
 			user, pwd, err := rabbitmq.FindRabbitMQAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					continue
+				}
 				return err
 			}
 			cres := MiddlewareClusterResp{
@@ -578,6 +588,9 @@ func (s *Server) handleListMiddlewaresAll(ctx *fiber.Ctx) error {
 		for _, m := range elss {
 			user, pwd, err := elasticsearch.FindElasticsearchAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					continue
+				}
 				return err
 			}
 			cres := MiddlewareClusterResp{
@@ -605,6 +618,9 @@ func (s *Server) handleListMiddlewaresAll(ctx *fiber.Ctx) error {
 		for _, m := range mdbs {
 			user, pwd, err := mariadb.FindMariaDBAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					continue
+				}
 				return err
 			}
 			cres := MiddlewareClusterResp{
@@ -632,6 +648,9 @@ func (s *Server) handleListMiddlewaresAll(ctx *fiber.Ctx) error {
 		for _, m := range mdbs {
 			user, pwd, err := wmysql.FindMysqlAdminUser(ctx.UserContext(), s.k8sClientSet, m.Namespace)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					continue
+				}
 				return err
 			}
 			cres := MiddlewareClusterResp{
@@ -661,7 +680,7 @@ func (s *Server) handleListMiddlewaresAll(ctx *fiber.Ctx) error {
 		MiddlewareType: TypeNats,
 		MetaInfo: MetaInfo{
 			Name:      "nats",
-			Namespace: "os-platform",
+			Namespace: constants.PlatformNamespace,
 		},
 		AdminUser: user,
 		Password:  pwd,
