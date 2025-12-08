@@ -118,29 +118,6 @@ func GetKVRocksDefineByUser(ctx context.Context, client *kubernetes.Clientset,
 
 }
 
-func CreateKVRocks(ctx context.Context,
-	client *kubernetes.Clientset,
-	clusterDef *v1alpha1.RedixCluster) (*appv1.StatefulSet, error) {
-
-	// create sts
-	klog.Info("creating kvrocks workload, ", clusterDef.Spec.KVRocks.Image)
-	sts, err := createKVRocks(ctx, client, clusterDef)
-	if err != nil {
-		klog.Error("create kvrocks error, ", err)
-		return nil, err
-	}
-
-	// create service
-	klog.Info("creating kvrocks service")
-	err = createKVRocksService(ctx, client, clusterDef.Name, clusterDef.Namespace)
-	if err != nil {
-		klog.Error("create kvrocks service error, ", err)
-		return nil, err
-	}
-
-	return sts, nil
-}
-
 func createKVRocks(ctx context.Context, client *kubernetes.Clientset,
 	clusterDef *v1alpha1.RedixCluster) (*appv1.StatefulSet, error) {
 	sts, err := client.AppsV1().StatefulSets(clusterDef.Namespace).Get(ctx, clusterDef.Name, metav1.GetOptions{})
@@ -224,43 +201,64 @@ func WaitForPodRunning(ctx context.Context, client *kubernetes.Clientset, namesp
 	return podIP, err
 }
 
-func UpdateKVRocks(ctx context.Context,
+func CreateOrUpdateKVRocks(ctx context.Context,
 	client *kubernetes.Clientset,
-	clusterDef *v1alpha1.RedixCluster) error {
-	_, err := client.AppsV1().StatefulSets(clusterDef.Namespace).Get(ctx, clusterDef.Name, metav1.GetOptions{})
+	clusterDef *v1alpha1.RedixCluster, isUpdated bool) (*appv1.StatefulSet, error) {
+	var retSts *appv1.StatefulSet
+	oldSts, err := client.AppsV1().StatefulSets(clusterDef.Namespace).Get(ctx, clusterDef.Name, metav1.GetOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
-		return err
+		return nil, err
 	}
 
 	if apierrors.IsNotFound(err) {
-		_, err = createKVRocks(ctx, client, clusterDef)
-		return err
+		retSts, err = createKVRocks(ctx, client, clusterDef)
+		if err != nil {
+			klog.Error("create kvrocks error, ", err)
+			return nil, err
+		}
 	}
 
-	// update sts
-	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		sts, err := client.AppsV1().StatefulSets(clusterDef.Namespace).Get(ctx, clusterDef.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
+	if oldSts != nil {
+		oldTemplateVersion := oldSts.Spec.Template.Labels["pod-template-version"]
+		newTemplateVersion := KVRocksStatefulSet.Spec.Template.Labels["pod-template-version"]
+
+		if isUpdated || oldTemplateVersion != newTemplateVersion {
+			klog.Info("kvrocks pod template version changed, need to update sts")
+			// update sts
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				sts, err := client.AppsV1().StatefulSets(clusterDef.Namespace).Get(ctx, clusterDef.Name, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+
+				updateSts, err := GetKVRocksDefineByUser(ctx, client,
+					clusterDef.Spec.KVRocks.Owner, clusterDef.Namespace, clusterDef)
+				if err != nil {
+					return err
+				}
+
+				sts.Spec.Template = updateSts.Spec.Template
+
+				retSts, err = client.AppsV1().StatefulSets(clusterDef.Namespace).Update(ctx, sts, metav1.UpdateOptions{})
+				return err
+			})
+
+			if err != nil {
+				klog.Error("update kvrocks error, ", err)
+				return nil, err
+			}
 		}
+	}
 
-		updateSts, err := GetKVRocksDefineByUser(ctx, client,
-			clusterDef.Spec.KVRocks.Owner, clusterDef.Namespace, clusterDef)
-		if err != nil {
-			return err
-		}
-
-		sts.Spec.Template = updateSts.Spec.Template
-
-		_, err = client.AppsV1().StatefulSets(clusterDef.Namespace).Update(ctx, sts, metav1.UpdateOptions{})
-		return err
-	})
-
+	// create or update service
+	klog.Info("creating or update kvrocks service")
+	err = createKVRocksService(ctx, client, clusterDef.Name, clusterDef.Namespace)
 	if err != nil {
-		klog.Error("update kvrocks error, ", err)
+		klog.Error("create or update kvrocks service error, ", err)
+		return nil, err
 	}
 
-	return err
+	return retSts, nil
 }
 
 func DeleteKVRocks(ctx context.Context,

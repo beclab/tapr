@@ -46,6 +46,7 @@ var (
 						"app":                         "kvrocks",
 						"app.kubernetes.io/name":      "kvrocks",
 						"app.bytetrade.io/middleware": "true",
+						"pod-template-version":        "v1.1",
 					},
 				},
 
