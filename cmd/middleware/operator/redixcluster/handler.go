@@ -33,7 +33,9 @@ func (c *controller) handler(action Action, obj interface{}) error {
 			return err
 		}
 
-		_, err = kvrocks.WaitForPodRunning(c.ctx, c.k8sClientSet, sts.Namespace, sts.Name+"-0")
+		if sts != nil {
+			_, err = kvrocks.WaitForPodRunning(c.ctx, c.k8sClientSet, sts.Namespace, sts.Name+"-0")
+		}
 		return err
 
 	case UPDATE:
