@@ -221,6 +221,9 @@ func CreateOrUpdateKVRocks(ctx context.Context,
 	if oldSts != nil {
 		oldTemplateVersion := oldSts.Spec.Template.Labels["pod-template-version"]
 		newTemplateVersion := KVRocksStatefulSet.Spec.Template.Labels["pod-template-version"]
+		// the kvrocks is existing, set the return sts to old one first
+		// if no need to update, just return the old one
+		retSts = oldSts
 
 		if isUpdated || oldTemplateVersion != newTemplateVersion {
 			klog.Info("kvrocks pod template version changed, need to update sts")
